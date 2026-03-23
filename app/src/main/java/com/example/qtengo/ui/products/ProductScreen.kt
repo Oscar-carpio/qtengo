@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -14,7 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.qtengo.data.model.Product
+import com.example.qtengo.data.local.model.Product
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -22,8 +21,11 @@ fun ProductScreen(
     profile: String = "FAMILIA",
     viewModel: ProductViewModel = viewModel()
 ) {
+
     val products by viewModel.products.observeAsState(emptyList())
+
     var showAddDialog by remember { mutableStateOf(false) }
+    var productToEdit by remember { mutableStateOf<Product?>(null) }
 
     LaunchedEffect(profile) {
         viewModel.loadProfile(profile)
@@ -32,22 +34,17 @@ fun ProductScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Mis Productos") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                title = { Text("Mis Productos") }
             )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Añadir producto")
+                Text("+")
             }
         }
     ) { paddingValues ->
 
         if (products.isEmpty()) {
-            // Pantalla vacía
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -55,49 +52,62 @@ fun ProductScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "No hay productos",
-                        style = MaterialTheme.typography.headlineSmall
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Pulsa + para añadir el primero",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    Text("No hay productos")
+                    Text("Pulsa + para añadir el primero")
                 }
             }
         } else {
-            // Lista de productos
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(vertical = 16.dp)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(products) { product ->
-                    ProductCard(product = product)
+                    ProductCard(
+                        product = product,
+                        onDelete = { viewModel.delete(product) },
+                        onEdit = { productToEdit = product }
+                    )
                 }
             }
         }
     }
 
-    // Dialogo para añadir producto
+    // ➕ Añadir
     if (showAddDialog) {
         AddProductDialog(
             profile = profile,
             onDismiss = { showAddDialog = false },
-            onConfirm = { product ->
-                viewModel.insert(product)
+            onConfirm = {
+                viewModel.insert(it)
                 showAddDialog = false
+            }
+        )
+    }
+
+    // ✏️ Editar
+    if (productToEdit != null) {
+        AddProductDialog(
+            profile = productToEdit!!.profile,
+            product = productToEdit,
+            onDismiss = { productToEdit = null },
+            onConfirm = {
+                viewModel.update(it)
+                productToEdit = null
             }
         )
     }
 }
 
 @Composable
-fun ProductCard(product: Product) {
+fun ProductCard(
+    product: Product,
+    onDelete: () -> Unit,
+    onEdit: () -> Unit
+) {
+
     val isLowStock = product.quantity <= product.minStock
 
     Card(
@@ -109,35 +119,35 @@ fun ProductCard(product: Product) {
                 MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = product.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Categoría: ${product.category}",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Text(
-                    text = "Stock: ${product.quantity} ${product.unit}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
+        Column(modifier = Modifier.padding(16.dp)) {
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(product.name, fontWeight = FontWeight.Bold)
+                    Text("Categoría: ${product.category}")
+                    Text("Stock: ${product.quantity} ${product.unit}")
+                }
+
+                if (isLowStock) {
+                    Icon(Icons.Default.Warning, contentDescription = null)
+                }
             }
-            if (isLowStock) {
-                Icon(
-                    imageVector = Icons.Default.Warning,
-                    contentDescription = "Stock bajo",
-                    tint = MaterialTheme.colorScheme.error
-                )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(onClick = onEdit) {
+                    Text("Editar")
+                }
+                TextButton(onClick = onDelete) {
+                    Text("Eliminar")
+                }
             }
         }
     }
@@ -146,69 +156,70 @@ fun ProductCard(product: Product) {
 @Composable
 fun AddProductDialog(
     profile: String,
+    product: Product? = null,
     onDismiss: () -> Unit,
     onConfirm: (Product) -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
-    var quantity by remember { mutableStateOf("") }
-    var minStock by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("") }
-    var unit by remember { mutableStateOf("unidades") }
+
+    var name by remember { mutableStateOf(product?.name ?: "") }
+    var quantity by remember { mutableStateOf(product?.quantity?.toString() ?: "") }
+    var minStock by remember { mutableStateOf(product?.minStock?.toString() ?: "") }
+    var category by remember { mutableStateOf(product?.category ?: "") }
+    var unit by remember { mutableStateOf(product?.unit ?: "unidades") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Añadir Producto") },
+        title = {
+            Text(if (product == null) "Añadir Producto" else "Editar Producto")
+        },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Nombre") },
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text("Nombre") }
                 )
+
                 OutlinedTextField(
                     value = quantity,
                     onValueChange = { quantity = it },
-                    label = { Text("Cantidad actual") },
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text("Cantidad") }
                 )
+
                 OutlinedTextField(
                     value = minStock,
                     onValueChange = { minStock = it },
-                    label = { Text("Stock mínimo") },
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text("Stock mínimo") }
                 )
+
                 OutlinedTextField(
                     value = category,
                     onValueChange = { category = it },
-                    label = { Text("Categoría") },
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text("Categoría") }
                 )
+
                 OutlinedTextField(
                     value = unit,
                     onValueChange = { unit = it },
-                    label = { Text("Unidad (kg, litros, unidades...)") },
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text("Unidad") }
                 )
             }
         },
         confirmButton = {
-            Button(
-                onClick = {
-                    if (name.isNotEmpty()) {
-                        onConfirm(
-                            Product(
-                                name = name,
-                                quantity = quantity.toDoubleOrNull() ?: 0.0,
-                                minStock = minStock.toDoubleOrNull() ?: 0.0,
-                                category = category,
-                                profile = profile,
-                                unit = unit
-                            )
-                        )
-                    }
-                }
-            ) {
+            Button(onClick = {
+                onConfirm(
+                    Product(
+                        id = product?.id ?: 0,
+                        name = name,
+                        quantity = quantity.toDoubleOrNull() ?: 0.0,
+                        minStock = minStock.toDoubleOrNull() ?: 0.0,
+                        category = category,
+                        profile = profile,
+                        unit = unit
+                    )
+                )
+            }) {
                 Text("Guardar")
             }
         },

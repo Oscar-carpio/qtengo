@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import com.example.qtengo.ui.screens.FamiliarHomeScreen
 import com.example.qtengo.ui.screens.ProfileScreen
@@ -17,10 +18,13 @@ import com.example.qtengo.ui.screens.ShoppingListDetailScreen
 import com.example.qtengo.ui.screens.AddGastoScreen
 import com.example.qtengo.ui.screens.GastosScreen
 import com.example.qtengo.ui.screens.InventarioScreen
+import com.example.qtengo.ui.products.ProductScreen
 import com.example.qtengo.ui.screens.AddInventarioScreen
+import com.example.qtengo.ui.screens.PymeFinanceScreen
 
 
 class MainActivity : ComponentActivity() {
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -74,6 +78,13 @@ class MainActivity : ComponentActivity() {
                             currentScreen = ""
                         }
                     )
+                    selectedProfile == "Pyme" && currentScreen == "Productos / Stock" -> ProductScreen(
+                        profile = "PYME"
+                    )
+                    selectedProfile == "Pyme" && currentScreen == "Gastos e ingresos" -> PymeFinanceScreen(
+                        onBack = { currentScreen = "" }
+                    )
+
                     selectedProfile == "Restauración" && currentScreen.isEmpty() -> RestauracionHomeScreen(
                         onMenuSelected = { currentScreen = it },
                         onBack = {
