@@ -7,30 +7,32 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-data class Gasto(val id: Int, val descripcion: String, val cantidad: Double, val categoria: String, val fecha: String)
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.qtengo.data.model.Expense
 
 @Composable
-fun GastosScreen(onAddGasto: () -> Unit, onBack: () -> Unit) {
+fun GastosScreen(
+    profile: String = "FAMILIA",
+    viewModel: ExpenseViewModel = viewModel(),
+    onAddGasto: () -> Unit,
+    onBack: () -> Unit
+) {
+    val expenses by viewModel.expenses.observeAsState(emptyList())
+    val totalExpenses by viewModel.totalExpenses.observeAsState(0.0)
+    val totalIncomes by viewModel.totalIncomes.observeAsState(0.0)
 
-    var gastos by remember {
-        mutableStateOf(
-            listOf(
-                Gasto(1, "Supermercado", 85.50, "Alimentación", "10/03/2026"),
-                Gasto(2, "Luz", 120.00, "Suministros", "08/03/2026"),
-                Gasto(3, "Netflix", 15.99, "Ocio", "05/03/2026"),
-                Gasto(4, "Gasolina", 60.00, "Transporte", "01/03/2026"),
-            )
-        )
+    LaunchedEffect(profile) {
+        viewModel.loadProfile(profile)
     }
 
-    val totalMes = gastos.sumOf { it.cantidad }
+    val balance = (totalIncomes ?: 0.0) - (totalExpenses ?: 0.0)
 
     Column(
         modifier = Modifier
@@ -51,7 +53,7 @@ fun GastosScreen(onAddGasto: () -> Unit, onBack: () -> Unit) {
                 Text(text = "←", fontSize = 24.sp, color = Color.White)
             }
             Text(
-                text = "Control de gastos",
+                text = "Control de gastos - $profile",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
@@ -65,7 +67,9 @@ fun GastosScreen(onAddGasto: () -> Unit, onBack: () -> Unit) {
                 .fillMaxWidth()
                 .padding(16.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF1565C0)),
+            colors = CardDefaults.cardColors(
+                containerColor = if (balance >= 0) Color(0xFF1565C0) else Color(0xFFD32F2F)
+            ),
             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
         ) {
             Column(
@@ -73,21 +77,28 @@ fun GastosScreen(onAddGasto: () -> Unit, onBack: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Total este mes",
+                    text = if (profile == "PYME") "Balance total" else "Total gastos este mes",
                     fontSize = 14.sp,
                     color = Color.White.copy(alpha = 0.8f)
                 )
                 Text(
-                    text = "%.2f €".format(totalMes),
+                    text = "%.2f €".format(if (profile == "PYME") balance else totalExpenses),
                     fontSize = 36.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
+                if (profile == "PYME") {
+                    Row(modifier = Modifier.padding(top = 8.dp)) {
+                        Text("Ingresos: +%.2f€".format(totalIncomes ?: 0.0), color = Color.White.copy(alpha = 0.9f), fontSize = 12.sp)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text("Gastos: -%.2f€".format(totalExpenses ?: 0.0), color = Color.White.copy(alpha = 0.9f), fontSize = 12.sp)
+                    }
+                }
             }
         }
 
         Text(
-            text = "Últimos gastos",
+            text = "Últimos movimientos",
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF1A3A6B),
@@ -100,7 +111,7 @@ fun GastosScreen(onAddGasto: () -> Unit, onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.weight(1f)
         ) {
-            items(gastos) { gasto ->
+            items(expenses) { expense ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(14.dp),
@@ -118,11 +129,12 @@ fun GastosScreen(onAddGasto: () -> Unit, onBack: () -> Unit) {
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = when (gasto.categoria) {
-                                    "Alimentación" -> "🛒"
-                                    "Suministros" -> "💡"
+                                text = when (expense.category) {
+                                    "Alimentación", "Suministros" -> "🛒"
                                     "Ocio" -> "🎬"
                                     "Transporte" -> "🚗"
+                                    "Ventas" -> "📈"
+                                    "Nóminas" -> "👥"
                                     else -> "💰"
                                 },
                                 fontSize = 20.sp
@@ -131,22 +143,22 @@ fun GastosScreen(onAddGasto: () -> Unit, onBack: () -> Unit) {
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = gasto.descripcion,
+                                text = expense.description,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF1A3A6B)
                             )
                             Text(
-                                text = "${gasto.categoria} · ${gasto.fecha}",
+                                text = "${expense.category} · ${expense.date}",
                                 fontSize = 12.sp,
                                 color = Color.Gray
                             )
                         }
                         Text(
-                            text = "-%.2f €".format(gasto.cantidad),
+                            text = "${if (expense.type == "GASTO") "-" else "+"}%.2f €".format(expense.amount),
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFFD32F2F)
+                            color = if (expense.type == "GASTO") Color(0xFFD32F2F) else Color(0xFF388E3C)
                         )
                     }
                 }
@@ -161,7 +173,7 @@ fun GastosScreen(onAddGasto: () -> Unit, onBack: () -> Unit) {
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A3A6B))
         ) {
-            Text(text = "+ Añadir gasto", fontSize = 16.sp, modifier = Modifier.padding(8.dp))
+            Text(text = "+ Añadir movimiento", fontSize = 16.sp, modifier = Modifier.padding(8.dp))
         }
     }
 }

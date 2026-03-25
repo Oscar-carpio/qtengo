@@ -1,57 +1,66 @@
 package com.example.qtengo.ui.products
 
 import android.app.Application
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.*
 import com.example.qtengo.data.database.AppDatabase
 import com.example.qtengo.data.model.Product
 import com.example.qtengo.data.repository.ProductRepository
 import kotlinx.coroutines.launch
 
+/**
+ * ViewModel para gestionar productos con persistencia real.
+ * Corregido el orden de inicialización para evitar cierres (NPE).
+ */
 class ProductViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: ProductRepository
-    private var currentProfile: String = "FAMILIA"
+    private val _currentProfile = MutableLiveData<String>("FAMILIA")
 
-    lateinit var products: LiveData<List<Product>>
-    lateinit var lowStockProducts: LiveData<List<Product>>
-    lateinit var productCount: LiveData<Int>
+    // LiveData reactivas. Se inicializan en el bloque init después del repositorio.
+    val products: LiveData<List<Product>>
+    val lowStockProducts: LiveData<List<Product>>
 
     init {
+        // 1. Inicializamos el repositorio primero
         val dao = AppDatabase.getDatabase(application).productDao()
         repository = ProductRepository(dao)
-        loadProfile("FAMILIA")
+
+        // 2. Vinculamos las LiveData al perfil usando switchMap
+        products = _currentProfile.switchMap { profile ->
+            repository.getByProfile(profile)
+        }
+        
+        lowStockProducts = _currentProfile.switchMap { profile ->
+            repository.getLowStock(profile)
+        }
     }
 
-    // Cargar datos según el perfil activo
+    /**
+     * Cambia el perfil y dispara la recarga automática de la lista desde la BD.
+     */
     fun loadProfile(profile: String) {
-        currentProfile = profile
-        products = repository.getByProfile(profile)
-        lowStockProducts = repository.getLowStock(profile)
-        productCount = repository.countProducts(profile)
+        if (_currentProfile.value != profile) {
+            _currentProfile.value = profile
+        }
     }
 
-    // Añadir producto
+    /**
+     * Inserta un producto.
+     */
     fun insert(product: Product) = viewModelScope.launch {
-        repository.insert(product)
+        val productWithProfile = product.copy(profile = _currentProfile.value ?: "FAMILIA")
+        repository.insert(productWithProfile)
     }
 
-    // Actualizar producto
     fun update(product: Product) = viewModelScope.launch {
         repository.update(product)
     }
 
-    // Eliminar producto
     fun delete(product: Product) = viewModelScope.launch {
         repository.delete(product)
     }
 
-    // Buscar productos
     fun search(query: String): LiveData<List<Product>> {
-        return repository.searchProducts(query, currentProfile)
+        return repository.searchProducts(query, _currentProfile.value ?: "FAMILIA")
     }
-
-    // Obtener perfil actual
-    fun getCurrentProfile(): String = currentProfile
 }
