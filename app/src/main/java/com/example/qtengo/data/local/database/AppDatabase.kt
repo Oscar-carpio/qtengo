@@ -1,26 +1,23 @@
-package com.example.qtengo.data.local.database
+package com.example.qtengo.data.database
 
 import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.example.qtengo.data.local.dao.ProductDao
-import com.example.qtengo.data.local.dao.FinanceDao
-import com.example.qtengo.data.local.model.Product
-import com.example.qtengo.data.local.model.FinanceMovement
+import com.example.qtengo.data.dao.ProductDao
+import com.example.qtengo.data.dao.UserDao
+import com.example.qtengo.data.model.Product
+import com.example.qtengo.data.model.User
 
 @Database(
-    entities = [
-        Product::class,
-        FinanceMovement::class
-    ],
-    version = 3, // SUBIMOS VERSION
+    entities = [Product::class, User::class],
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun productDao(): ProductDao
-    abstract fun financeDao(): FinanceDao
+    abstract fun userDao(): UserDao
 
     companion object {
         @Volatile
@@ -31,11 +28,10 @@ abstract class AppDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "qtengo_db"
+                    "stockapp_database"
                 )
-                    .fallbackToDestructiveMigration() // BORRA BD SI CAMBIA
+                    .fallbackToDestructiveMigration()
                     .build()
-
                 INSTANCE = instance
                 instance
             }
