@@ -1,7 +1,8 @@
 package com.example.qtengo.data.repository
 
 import androidx.lifecycle.LiveData
-import com.example.qtengo.data.model.Supplier
+import com.example.qtengo.data.local.dao.SupplierDao
+import com.example.qtengo.data.local.model.Supplier
 
 /**
  * Repositorio para gestionar la comunicación entre el ViewModel y el DAO de proveedores.

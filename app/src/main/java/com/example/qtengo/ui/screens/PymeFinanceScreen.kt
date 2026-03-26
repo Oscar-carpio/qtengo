@@ -13,11 +13,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.qtengo.data.local.model.FinanceMovement
-import com.example.qtengo.ui.finance.FinanceViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
-@ExperimentalMaterial3Api
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PymeFinanceScreen(
     onBack: () -> Unit,
@@ -48,9 +47,9 @@ fun PymeFinanceScreen(
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            FinanceCard("Ingresos", ingresos, Color(0xFF2E7D32))
-            FinanceCard("Gastos", gastos, Color(0xFFC62828))
-            FinanceCard("Beneficio", ingresos - gastos, Color(0xFF1565C0))
+            FinanceCard("Ingresos", ingresos ?: 0.0, Color(0xFF2E7D32))
+            FinanceCard("Gastos", gastos ?: 0.0, Color(0xFFC62828))
+            FinanceCard("Beneficio", (ingresos ?: 0.0) - (gastos ?: 0.0), Color(0xFF1565C0))
         }
 
         // BOTONES
@@ -135,8 +134,8 @@ fun MovementItem(movement: FinanceMovement, onDelete: () -> Unit) {
                     color = if (movement.type == "INGRESO") Color(0xFF2E7D32) else Color.Red
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                TextButton(onClick = onDelete) {
-                    Text("X")
+                IconButton(onClick = onDelete) {
+                    Text("🗑️")
                 }
             }
         }

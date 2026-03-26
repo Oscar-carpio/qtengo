@@ -1,9 +1,9 @@
-package com.example.qtengo.data.dao
+package com.example.qtengo.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
-import com.example.qtengo.data.model.User
+import com.example.qtengo.data.local.model.User
 
 @Dao
 interface UserDao {

@@ -9,24 +9,33 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.qtengo.ui.products.ProductViewModel
 
-data class PymeHomeScreen(val title: String, val icon: String, val color: Color)
+data class PymeMenuOption(val title: String, val icon: String, val color: Color)
 
 @Composable
-fun PymeHomeScreen(onMenuSelected: (String) -> Unit, onBack: () -> Unit) {
+fun PymeHomeScreen(
+    onMenuSelected: (String) -> Unit,
+    onBack: () -> Unit,
+    productViewModel: ProductViewModel = viewModel()
+) {
+    val productCount by productViewModel.productCount.observeAsState(0)
+    val lowStockProducts by productViewModel.lowStockProducts.observeAsState(emptyList())
 
     val menuOptions = listOf(
-        PymeHomeScreen("Productos / Stock", "📦", Color(0xFF1565C0)),
-        PymeHomeScreen("Gastos e ingresos", "💹", Color(0xFF1976D2)),
-        PymeHomeScreen("Proveedores", "🚚", Color(0xFF1E88E5)),
-        PymeHomeScreen("Empleados", "👥", Color(0xFF2196F3)),
-        PymeHomeScreen("Agenda de Tareas", "📝", Color(0xFF0288D1)) // Nueva funcionalidad añadida
+        PymeMenuOption("Productos / Stock", "📦", Color(0xFF1565C0)),
+        PymeMenuOption("Gastos e ingresos", "💹", Color(0xFF1976D2)),
+        PymeMenuOption("Proveedores", "🚚", Color(0xFF1E88E5)),
+        PymeMenuOption("Empleados", "👥", Color(0xFF2196F3)),
+        PymeMenuOption("Agenda de Tareas", "📝", Color(0xFF0288D1))
     )
 
     Column(
@@ -40,7 +49,7 @@ fun PymeHomeScreen(onMenuSelected: (String) -> Unit, onBack: () -> Unit) {
 
         DashboardSection(
             productCount = productCount,
-            lowStockCount = lowStock.size
+            lowStockCount = lowStockProducts.size
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -106,18 +115,25 @@ fun DashboardSection(
             .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        DashboardCard("Productos", productCount.toString(), Color(0xFF1565C0))
-        DashboardCard("Stock bajo", lowStockCount.toString(), Color(0xFFD32F2F))
+        DashboardCard(
+            title = "Productos",
+            value = productCount.toString(),
+            color = Color(0xFF1565C0),
+            modifier = Modifier.weight(1f)
+        )
+        DashboardCard(
+            title = "Stock bajo",
+            value = lowStockCount.toString(),
+            color = Color(0xFFD32F2F),
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 
 @Composable
-fun DashboardCard(title: String, value: String, color: Color) {
+fun DashboardCard(title: String, value: String, color: Color, modifier: Modifier = Modifier) {
     Card(
-        modifier = Modifier.run {
-            weight(1f)
-                .height(100.dp)
-        },
+        modifier = modifier.height(100.dp),
         colors = CardDefaults.cardColors(containerColor = color),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -141,13 +157,13 @@ fun DashboardCard(title: String, value: String, color: Color) {
 }
 
 @Composable
-fun PymeHomeScreen.MenuCard(onClick: () -> Unit) {
+fun MenuCard(option: PymeMenuOption, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .height(120.dp)
             .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = color),
+        colors = CardDefaults.cardColors(containerColor = option.color),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(
@@ -155,10 +171,10 @@ fun PymeHomeScreen.MenuCard(onClick: () -> Unit) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(icon, fontSize = 32.sp)
+            Text(option.icon, fontSize = 32.sp)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = title,
+                text = option.title,
                 color = Color.White,
                 fontWeight = FontWeight.Bold
             )

@@ -1,7 +1,8 @@
 package com.example.qtengo.data.repository
 
 import androidx.lifecycle.LiveData
-import com.example.qtengo.data.model.Employee
+import com.example.qtengo.data.local.dao.EmployeeDao
+import com.example.qtengo.data.local.model.Employee
 
 /**
  * Repositorio para gestionar la comunicación entre el ViewModel y el DAO de empleados.

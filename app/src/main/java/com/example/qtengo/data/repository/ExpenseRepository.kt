@@ -1,7 +1,8 @@
 package com.example.qtengo.data.repository
 
 import androidx.lifecycle.LiveData
-import com.example.qtengo.data.model.Expense
+import com.example.qtengo.data.local.dao.ExpenseDao
+import com.example.qtengo.data.local.model.Expense
 
 class ExpenseRepository(private val expenseDao: ExpenseDao) {
 

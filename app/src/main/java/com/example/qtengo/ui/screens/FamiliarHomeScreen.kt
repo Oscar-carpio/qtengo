@@ -17,16 +17,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-data class MenuOption(val title: String, val icon: String, val color: Color)
+data class FamiliarMenuOption(val title: String, val icon: String, val color: Color)
 
 @Composable
 fun FamiliarHomeScreen(onMenuSelected: (String) -> Unit, onBack: () -> Unit) {
 
     val menuOptions = listOf(
-        PymeHomeScreen("Lista de la compra", "🛒", Color(0xFF1565C0)),
-        PymeHomeScreen("Control de gastos", "💰", Color(0xFF1976D2)),
-        PymeHomeScreen("Inventario del hogar", "📦", Color(0xFF1E88E5)),
-        PymeHomeScreen("Tareas y recordatorios", "✅", Color(0xFF2196F3))
+        FamiliarMenuOption("Lista de la compra", "🛒", Color(0xFF1565C0)),
+        FamiliarMenuOption("Control de gastos", "💰", Color(0xFF1976D2)),
+        FamiliarMenuOption("Inventario del hogar", "📦", Color(0xFF1E88E5)),
+        FamiliarMenuOption("Tareas y recordatorios", "✅", Color(0xFF2196F3))
     )
 
     Column(
@@ -78,14 +78,14 @@ fun FamiliarHomeScreen(onMenuSelected: (String) -> Unit, onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(menuOptions) { option ->
-                MenuCard(option = option, onClick = { onMenuSelected(option.title) })
+                FamiliarMenuCard(option = option, onClick = { onMenuSelected(option.title) })
             }
         }
     }
 }
 
 @Composable
-fun MenuCard(option: PymeHomeScreen, onClick: () -> Unit) {
+fun FamiliarMenuCard(option: FamiliarMenuOption, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()

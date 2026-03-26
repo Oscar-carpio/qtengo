@@ -15,7 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.qtengo.data.model.Expense
+import com.example.qtengo.data.local.model.Expense
 
 @Composable
 fun GastosScreen(
@@ -143,7 +143,7 @@ fun GastosScreen(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = expense.description,
+                                text = expense.name,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF1A3A6B)

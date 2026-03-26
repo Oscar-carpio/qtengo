@@ -23,7 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.qtengo.data.model.Supplier
+import com.example.qtengo.data.local.model.Supplier
 
 /**
  * Pantalla para visualizar y gestionar la lista de proveedores.
@@ -202,6 +202,7 @@ fun SupplierCard(supplier: Supplier, onCall: () -> Unit, onEmail: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddSupplierDialog(onDismiss: () -> Unit, onConfirm: (String, String, String, String, String) -> Unit) {
     var name by remember { mutableStateOf("") }

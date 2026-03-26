@@ -6,8 +6,8 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.switchMap
 import androidx.lifecycle.viewModelScope
-import com.example.qtengo.data.database.AppDatabase
-import com.example.qtengo.data.model.Expense
+import com.example.qtengo.data.local.database.AppDatabase
+import com.example.qtengo.data.local.model.Expense
 import com.example.qtengo.data.repository.ExpenseRepository
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat

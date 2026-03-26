@@ -1,27 +1,32 @@
 package com.example.qtengo.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
+data class RestauracionMenuOption(val title: String, val icon: String, val color: Color)
 
 @Composable
 fun RestauracionHomeScreen(onMenuSelected: (String) -> Unit, onBack: () -> Unit) {
 
     val menuOptions = listOf(
-        PymeHomeScreen("Carta / Menú del día", "🍽️", Color(0xFF1565C0)),
-        PymeHomeScreen("Stock de cocina", "🥘", Color(0xFF1976D2)),
-        PymeHomeScreen("Reservas", "📅", Color(0xFF1E88E5)),
-        PymeHomeScreen("Proveedores", "🚚", Color(0xFF2196F3))
+        RestauracionMenuOption("Carta / Menú del día", "🍽️", Color(0xFF1565C0)),
+        RestauracionMenuOption("Stock de cocina", "🥘", Color(0xFF1976D2)),
+        RestauracionMenuOption("Reservas", "📅", Color(0xFF1E88E5)),
+        RestauracionMenuOption("Proveedores", "🚚", Color(0xFF2196F3))
     )
 
     Column(
@@ -72,8 +77,39 @@ fun RestauracionHomeScreen(onMenuSelected: (String) -> Unit, onBack: () -> Unit)
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(menuOptions) { option ->
-                MenuCard(option = option, onClick = { onMenuSelected(option.title) })
+                RestauracionMenuCard(option = option, onClick = { onMenuSelected(option.title) })
             }
+        }
+    }
+}
+
+@Composable
+fun RestauracionMenuCard(option: RestauracionMenuOption, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = option.color),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(text = option.icon, fontSize = 40.sp)
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = option.title,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

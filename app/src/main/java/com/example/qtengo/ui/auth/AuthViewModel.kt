@@ -3,8 +3,8 @@ package com.example.qtengo.ui.auth
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.qtengo.data.database.AppDatabase
-import com.example.qtengo.data.model.User
+import com.example.qtengo.data.local.database.AppDatabase
+import com.example.qtengo.data.local.model.User
 import com.example.qtengo.data.repository.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

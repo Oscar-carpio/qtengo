@@ -1,8 +1,8 @@
-package com.example.qtengo.data.dao
+package com.example.qtengo.data.local.dao
 
 import androidx.lifecycle.LiveData
 import androidx.room.*
-import com.example.qtengo.data.model.Product
+import com.example.qtengo.data.local.model.Product
 
 @Dao
 interface ProductDao {

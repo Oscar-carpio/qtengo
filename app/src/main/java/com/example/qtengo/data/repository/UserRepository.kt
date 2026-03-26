@@ -1,7 +1,7 @@
 package com.example.qtengo.data.repository
 
-import com.example.qtengo.data.dao.UserDao
-import com.example.qtengo.data.model.User
+import com.example.qtengo.data.local.dao.UserDao
+import com.example.qtengo.data.local.model.User
 
 class UserRepository(private val userDao: UserDao) {
 
@@ -14,5 +14,9 @@ class UserRepository(private val userDao: UserDao) {
 
     suspend fun login(email: String, password: String): User? {
         return userDao.login(email, password)
+    }
+
+    suspend fun getUserByEmail(email: String): User? {
+        return userDao.buscarPorEmail(email)
     }
 }

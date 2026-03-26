@@ -4,8 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.viewModelScope
-import com.example.qtengo.data.database.AppDatabase
-import com.example.qtengo.data.model.Employee
+import com.example.qtengo.data.local.database.AppDatabase
+import com.example.qtengo.data.local.model.Employee
 import com.example.qtengo.data.repository.EmployeeRepository
 import kotlinx.coroutines.launch
 

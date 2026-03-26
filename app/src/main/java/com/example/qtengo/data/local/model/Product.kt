@@ -1,4 +1,4 @@
-package com.example.qtengo.data.model
+package com.example.qtengo.data.local.model
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

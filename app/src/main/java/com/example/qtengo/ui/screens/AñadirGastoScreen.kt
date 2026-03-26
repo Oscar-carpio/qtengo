@@ -143,7 +143,8 @@ fun AddGastoScreen(
                     val amountValue = cantidad.toDoubleOrNull()
                     if (descripcion.isNotBlank() && amountValue != null) {
                         viewModel.insert(
-                            description = descripcion,
+                            name = descripcion,
+                            details = "",
                             amount = amountValue,
                             category = categoriaSeleccionada,
                             type = tipoSeleccionado
@@ -165,7 +166,7 @@ fun AddGastoScreen(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun FlowRow(
     modifier: Modifier = Modifier,
