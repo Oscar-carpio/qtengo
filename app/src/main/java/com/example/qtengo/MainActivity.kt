@@ -5,8 +5,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
+import com.example.qtengo.data.model.User
+import com.example.qtengo.ui.auth.LoginScreen
+import com.example.qtengo.ui.auth.RegisterScreen
 import com.example.qtengo.ui.screens.FamiliarHomeScreen
-import com.example.qtengo.ui.screens.ProfileScreen
 import com.example.qtengo.ui.screens.PymeHomeScreen
 import com.example.qtengo.ui.screens.RestauracionHomeScreen
 import com.example.qtengo.ui.screens.ShoppingList
@@ -19,7 +21,6 @@ import com.example.qtengo.ui.screens.GastosScreen
 import com.example.qtengo.ui.screens.InventarioScreen
 import com.example.qtengo.ui.screens.AddInventarioScreen
 
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,57 +28,63 @@ class MainActivity : ComponentActivity() {
         setContent {
             QtengoTheme {
                 var showSplash by remember { mutableStateOf(true) }
-                var selectedProfile by remember { mutableStateOf("") }
+                var usuarioLogueado by remember { mutableStateOf<User?>(null) }
+                var mostrarRegistro by remember { mutableStateOf(false) }
                 var currentScreen by remember { mutableStateOf("") }
                 val selectedShoppingList = remember { mutableStateOf<ShoppingList?>(null) }
                 var showAddGasto by remember { mutableStateOf(false) }
-                var showAddInventario by remember {mutableStateOf(false)}
-
+                var showAddInventario by remember { mutableStateOf(false) }
 
                 when {
                     showSplash -> SplashScreen(
                         onSplashFinished = { showSplash = false }
                     )
-                    selectedProfile.isEmpty() -> ProfileScreen(
-                        onProfileSelected = { selectedProfile = it }
+                    usuarioLogueado == null && mostrarRegistro -> RegisterScreen(
+                        onRegistroExitoso = {
+                            usuarioLogueado = it
+                            mostrarRegistro = false
+                        },
+                        onIrALogin = { mostrarRegistro = false }
                     )
-                    selectedProfile == "Familiar" && currentScreen.isEmpty() -> FamiliarHomeScreen(
+                    usuarioLogueado == null -> LoginScreen(
+                        onLoginExitoso = { usuarioLogueado = it },
+                        onIrARegistro = { mostrarRegistro = true }
+                    )
+                    usuarioLogueado!!.perfil == "Familiar" && currentScreen.isEmpty() -> FamiliarHomeScreen(
                         onMenuSelected = { currentScreen = it },
-                        onBack = { selectedProfile = "" }
+                        onBack = { usuarioLogueado = null }
                     )
-                    selectedProfile == "Familiar" && currentScreen == "Lista de la compra" && selectedShoppingList.value == null -> ShoppingListScreen(
+                    usuarioLogueado!!.perfil == "Familiar" && currentScreen == "Lista de la compra" && selectedShoppingList.value == null -> ShoppingListScreen(
                         onListSelected = { selectedShoppingList.value = it },
                         onBack = { currentScreen = "" }
                     )
-                    selectedProfile == "Familiar" && currentScreen == "Lista de la compra" && selectedShoppingList.value != null -> ShoppingListDetailScreen(
+                    usuarioLogueado!!.perfil == "Familiar" && currentScreen == "Lista de la compra" && selectedShoppingList.value != null -> ShoppingListDetailScreen(
                         shoppingList = selectedShoppingList.value!!,
                         onBack = { selectedShoppingList.value = null }
                     )
-                    selectedProfile == "Familiar" && currentScreen == "Control de gastos" && !showAddGasto -> GastosScreen(
+                    usuarioLogueado!!.perfil == "Familiar" && currentScreen == "Control de gastos" && !showAddGasto -> GastosScreen(
                         onAddGasto = { showAddGasto = true },
                         onBack = { currentScreen = "" }
                     )
-                    selectedProfile == "Familiar" && currentScreen == "Control de gastos" && showAddGasto -> AddGastoScreen(
+                    usuarioLogueado!!.perfil == "Familiar" && currentScreen == "Control de gastos" && showAddGasto -> AddGastoScreen(
                         onGastoGuardado = { showAddGasto = false },
                         onBack = { showAddGasto = false }
                     )
-                    selectedProfile == "Familiar" && currentScreen == "Inventario del hogar" && !showAddInventario -> InventarioScreen(
-                        onAddItem = {showAddInventario = true},
-                        onBack = {currentScreen=""}
+                    usuarioLogueado!!.perfil == "Familiar" && currentScreen == "Inventario del hogar" && !showAddInventario -> InventarioScreen(
+                        onAddItem = { showAddInventario = true },
+                        onBack = { currentScreen = "" }
                     )
-
-
-                    selectedProfile == "Pyme" && currentScreen.isEmpty() -> PymeHomeScreen(
+                    usuarioLogueado!!.perfil == "Pyme" && currentScreen.isEmpty() -> PymeHomeScreen(
                         onMenuSelected = { currentScreen = it },
                         onBack = {
-                            selectedProfile = ""
+                            usuarioLogueado = null
                             currentScreen = ""
                         }
                     )
-                    selectedProfile == "Restauración" && currentScreen.isEmpty() -> RestauracionHomeScreen(
+                    usuarioLogueado!!.perfil == "Restauración" && currentScreen.isEmpty() -> RestauracionHomeScreen(
                         onMenuSelected = { currentScreen = it },
                         onBack = {
-                            selectedProfile = ""
+                            usuarioLogueado = null
                             currentScreen = ""
                         }
                     )

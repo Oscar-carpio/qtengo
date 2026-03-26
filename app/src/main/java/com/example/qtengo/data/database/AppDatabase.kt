@@ -5,16 +5,19 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.example.qtengo.data.dao.ProductDao
+import com.example.qtengo.data.dao.UserDao
 import com.example.qtengo.data.model.Product
+import com.example.qtengo.data.model.User
 
 @Database(
-    entities = [Product::class],
-    version = 1,
+    entities = [Product::class, User::class],
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun productDao(): ProductDao
+    abstract fun userDao(): UserDao
 
     companion object {
         @Volatile
@@ -26,7 +29,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "stockapp_database"
-                ).build()
+                )
+                    .fallbackToDestructiveMigration()
+                    .build()
                 INSTANCE = instance
                 instance
             }
