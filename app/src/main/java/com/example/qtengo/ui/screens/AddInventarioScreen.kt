@@ -11,14 +11,22 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.qtengo.data.local.model.Product
+import com.example.qtengo.ui.products.ProductViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddInventarioScreen(onItemGuardado: () -> Unit, onBack: () -> Unit) {
-
+fun AddInventarioScreen(
+    profile: String = "FAMILIA",
+    productViewModel: ProductViewModel = viewModel(),
+    onItemGuardado: () -> Unit, 
+    onBack: () -> Unit
+) {
     var nombre by remember { mutableStateOf("") }
     var cantidad by remember { mutableStateOf("") }
-    var ubicacion by remember { mutableStateOf("") }
-    var fechaCaducidad by remember { mutableStateOf("") }
+    var minStock by remember { mutableStateOf("1") }
+    var notas by remember { mutableStateOf("") }
 
     val ubicaciones = listOf("Cocina", "Despensa", "Lavadero", "Trastero", "Baño", "Otros")
     var ubicacionSeleccionada by remember { mutableStateOf("Cocina") }
@@ -66,43 +74,55 @@ fun AddInventarioScreen(onItemGuardado: () -> Unit, onBack: () -> Unit) {
                 shape = RoundedCornerShape(12.dp)
             )
 
-            OutlinedTextField(
-                value = cantidad,
-                onValueChange = { cantidad = it },
-                label = { Text("Cantidad") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = cantidad,
+                    onValueChange = { cantidad = it },
+                    label = { Text("Cantidad") },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+                OutlinedTextField(
+                    value = minStock,
+                    onValueChange = { minStock = it },
+                    label = { Text("Stock Mín.") },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+            }
 
             OutlinedTextField(
-                value = fechaCaducidad,
-                onValueChange = { fechaCaducidad = it },
-                label = { Text("Fecha de caducidad (opcional)") },
+                value = notas,
+                onValueChange = { notas = it },
+                label = { Text("Notas (opcional)") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp)
             )
 
             Text(
-                text = "Ubicación",
+                text = "Ubicación / Categoría",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF1A3A6B)
             )
 
-            ubicaciones.chunked(3).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    row.forEach { ubicacion ->
-                        FilterChip(
-                            selected = ubicacionSeleccionada == ubicacion,
-                            onClick = { ubicacionSeleccionada = ubicacion },
-                            label = { Text(ubicacion, fontSize = 12.sp) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Color(0xFF1A3A6B),
-                                selectedLabelColor = Color.White
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ubicaciones.chunked(3).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        row.forEach { ubicacion ->
+                            FilterChip(
+                                selected = ubicacionSeleccionada == ubicacion,
+                                onClick = { ubicacionSeleccionada = ubicacion },
+                                label = { Text(ubicacion, fontSize = 12.sp) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Color(0xFF1A3A6B),
+                                    selectedLabelColor = Color.White
+                                )
                             )
-                        )
+                        }
                     }
                 }
             }
@@ -112,6 +132,16 @@ fun AddInventarioScreen(onItemGuardado: () -> Unit, onBack: () -> Unit) {
             Button(
                 onClick = {
                     if (nombre.isNotBlank() && cantidad.isNotBlank()) {
+                        val product = Product(
+                            name = nombre,
+                            quantity = cantidad.toDoubleOrNull() ?: 0.0,
+                            minStock = minStock.toDoubleOrNull() ?: 1.0,
+                            category = ubicacionSeleccionada,
+                            profile = profile,
+                            unit = "ud.",
+                            notes = notas
+                        )
+                        productViewModel.insert(product)
                         onItemGuardado()
                     }
                 },
