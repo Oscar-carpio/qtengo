@@ -9,36 +9,24 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.qtengo.ui.products.ProductViewModel
 
-data class MenuOption(val title: String, val icon: String, val color: Color)
+data class PymeHomeScreen(val title: String, val icon: String, val color: Color)
 
 @Composable
-fun PymeHomeScreen(
-    onMenuSelected: (String) -> Unit,
-    onBack: () -> Unit,
-    viewModel: ProductViewModel = viewModel()
-) {
-    val productCount by viewModel.productCount.observeAsState(0)
-    val lowStock by viewModel.lowStockProducts.observeAsState(emptyList())
-
-    LaunchedEffect(Unit) {
-        viewModel.loadProfile("PYME")
-    }
+fun PymeHomeScreen(onMenuSelected: (String) -> Unit, onBack: () -> Unit) {
 
     val menuOptions = listOf(
-        MenuOption("Productos / Stock", "📦", Color(0xFF1565C0)),
-        MenuOption("Gastos e ingresos", "💹", Color(0xFF1976D2)),
-        MenuOption("Proveedores", "🚚", Color(0xFF1E88E5)),
-        MenuOption("Empleados", "👥", Color(0xFF2196F3))
+        PymeHomeScreen("Productos / Stock", "📦", Color(0xFF1565C0)),
+        PymeHomeScreen("Gastos e ingresos", "💹", Color(0xFF1976D2)),
+        PymeHomeScreen("Proveedores", "🚚", Color(0xFF1E88E5)),
+        PymeHomeScreen("Empleados", "👥", Color(0xFF2196F3)),
+        PymeHomeScreen("Agenda de Tareas", "📝", Color(0xFF0288D1)) // Nueva funcionalidad añadida
     )
 
     Column(
@@ -126,9 +114,10 @@ fun DashboardSection(
 @Composable
 fun DashboardCard(title: String, value: String, color: Color) {
     Card(
-        modifier = Modifier
-            .weight(1f)
-            .height(100.dp),
+        modifier = Modifier.run {
+            weight(1f)
+                .height(100.dp)
+        },
         colors = CardDefaults.cardColors(containerColor = color),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -152,13 +141,13 @@ fun DashboardCard(title: String, value: String, color: Color) {
 }
 
 @Composable
-fun MenuCard(option: MenuOption, onClick: () -> Unit) {
+fun PymeHomeScreen.MenuCard(onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .height(120.dp)
             .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = option.color),
+        colors = CardDefaults.cardColors(containerColor = color),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(
@@ -166,10 +155,10 @@ fun MenuCard(option: MenuOption, onClick: () -> Unit) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(option.icon, fontSize = 32.sp)
+            Text(icon, fontSize = 32.sp)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = option.title,
+                text = title,
                 color = Color.White,
                 fontWeight = FontWeight.Bold
             )

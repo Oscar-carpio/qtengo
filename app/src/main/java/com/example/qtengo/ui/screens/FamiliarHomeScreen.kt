@@ -23,10 +23,10 @@ data class MenuOption(val title: String, val icon: String, val color: Color)
 fun FamiliarHomeScreen(onMenuSelected: (String) -> Unit, onBack: () -> Unit) {
 
     val menuOptions = listOf(
-        MenuOption("Lista de la compra", "🛒", Color(0xFF1565C0)),
-        MenuOption("Control de gastos", "💰", Color(0xFF1976D2)),
-        MenuOption("Inventario del hogar", "📦", Color(0xFF1E88E5)),
-        MenuOption("Tareas y recordatorios", "✅", Color(0xFF2196F3))
+        PymeHomeScreen("Lista de la compra", "🛒", Color(0xFF1565C0)),
+        PymeHomeScreen("Control de gastos", "💰", Color(0xFF1976D2)),
+        PymeHomeScreen("Inventario del hogar", "📦", Color(0xFF1E88E5)),
+        PymeHomeScreen("Tareas y recordatorios", "✅", Color(0xFF2196F3))
     )
 
     Column(
@@ -85,7 +85,7 @@ fun FamiliarHomeScreen(onMenuSelected: (String) -> Unit, onBack: () -> Unit) {
 }
 
 @Composable
-fun MenuCard(option: MenuOption, onClick: () -> Unit) {
+fun MenuCard(option: PymeHomeScreen, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()

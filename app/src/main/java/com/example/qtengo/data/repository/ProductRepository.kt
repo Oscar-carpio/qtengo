@@ -1,90 +1,43 @@
 package com.example.qtengo.data.repository
 
-import com.example.qtengo.data.local.dao.ProductDao
-import com.example.qtengo.data.local.model.Product
-import com.example.qtengo.data.remote.RetrofitInstance
+import androidx.lifecycle.LiveData
+import com.example.qtengo.data.dao.ProductDao
+import com.example.qtengo.data.model.Product
 
-class ProductRepository(private val dao: ProductDao) {
+class ProductRepository(private val productDao: ProductDao) {
 
-    private val api = RetrofitInstance.api
-
-    fun getByProfile(profile: String) = dao.getByProfile(profile)
-    fun getLowStock(profile: String) = dao.getLowStock(profile)
-    fun countProducts(profile: String) = dao.countProducts(profile)
-
-    // ========================
-    // 🔄 SYNC API → ROOM
-    // ========================
-    suspend fun syncProducts(profile: String) {
-        try {
-            val remoteProducts = api.getProducts(profile)
-            dao.deleteByProfile(profile)
-            dao.insertAll(remoteProducts)
-
-            // Después sincronizamos pendientes
-            syncPending()
-
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+    // Obtener productos por perfil
+    fun getByProfile(profile: String): LiveData<List<Product>> {
+        return productDao.getByProfile(profile)
     }
 
-    // ========================
-    // 🔄 SYNC PENDIENTES
-    // ========================
-    private suspend fun syncPending() {
-        val pending = dao.getPendingSync()
-
-        for (product in pending) {
-            try {
-                if (product.id == 0) {
-                    api.insertProduct(product)
-                } else {
-                    api.updateProduct(product.id, product)
-                }
-
-                dao.update(product.copy(pendingSync = false))
-
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
+    // Obtener productos con stock bajo
+    fun getLowStock(profile: String): LiveData<List<Product>> {
+        return productDao.getLowStock(profile)
     }
 
-    // ========================
-    // ➕ INSERT
-    // ========================
+    // Buscar productos
+    fun searchProducts(search: String, profile: String): LiveData<List<Product>> {
+        return productDao.searchProducts(search, profile)
+    }
+
+    // Contar productos
+    fun countProducts(profile: String): LiveData<Int> {
+        return productDao.countProducts(profile)
+    }
+
+    // Añadir producto
     suspend fun insert(product: Product) {
-        dao.insert(product.copy(pendingSync = true))
-
-        try {
-            api.insertProduct(product)
-        } catch (e: Exception) {
-            // se sincronizará luego
-        }
+        productDao.insert(product)
     }
 
-    // ========================
-    // ✏️ UPDATE
-    // ========================
+    // Actualizar producto
     suspend fun update(product: Product) {
-        dao.update(product.copy(pendingSync = true))
-
-        try {
-            api.updateProduct(product.id, product)
-        } catch (e: Exception) {
-        }
+        productDao.update(product)
     }
 
-    // ========================
-    // ❌ DELETE
-    // ========================
+    // Eliminar producto
     suspend fun delete(product: Product) {
-        dao.delete(product)
-
-        try {
-            api.deleteProduct(product.id)
-        } catch (e: Exception) {
-        }
+        productDao.delete(product)
     }
 }

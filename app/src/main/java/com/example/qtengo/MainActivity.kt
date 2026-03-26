@@ -14,24 +14,28 @@ import com.example.qtengo.ui.screens.RestauracionHomeScreen
 import com.example.qtengo.ui.screens.ShoppingList
 import com.example.qtengo.ui.screens.ShoppingListScreen
 import com.example.qtengo.ui.screens.SplashScreen
+import com.example.qtengo.ui.screens.*
 import com.example.qtengo.ui.theme.QtengoTheme
-import com.example.qtengo.ui.screens.ShoppingListDetailScreen
-import com.example.qtengo.ui.screens.AddGastoScreen
-import com.example.qtengo.ui.screens.GastosScreen
-import com.example.qtengo.ui.screens.InventarioScreen
-import com.example.qtengo.ui.screens.AddInventarioScreen
+import com.example.qtengo.ui.products.ProductScreen
 
+/**
+ * Actividad principal que gestiona la navegación de la aplicación Q-Tengo.
+ * Organizada por perfiles: Familiar, Pyme y Restauración.
+ */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             QtengoTheme {
+                // Estados para controlar la navegación
                 var showSplash by remember { mutableStateOf(true) }
                 var usuarioLogueado by remember { mutableStateOf<User?>(null) }
                 var mostrarRegistro by remember { mutableStateOf(false) }
                 var currentScreen by remember { mutableStateOf("") }
                 val selectedShoppingList = remember { mutableStateOf<ShoppingList?>(null) }
+
+                // Estados para diálogos o pantallas secundarias
                 var showAddGasto by remember { mutableStateOf(false) }
                 var showAddInventario by remember { mutableStateOf(false) }
 

@@ -11,15 +11,28 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
-fun AddGastoScreen(onGastoGuardado: () -> Unit, onBack: () -> Unit) {
-
+fun AddGastoScreen(
+    profile: String = "FAMILIA",
+    viewModel: ExpenseViewModel = viewModel(),
+    onGastoGuardado: () -> Unit,
+    onBack: () -> Unit
+) {
     var descripcion by remember { mutableStateOf("") }
     var cantidad by remember { mutableStateOf("") }
-    var categoriaSeleccionada by remember { mutableStateOf("Alimentación") }
+    var tipoSeleccionado by remember { mutableStateOf("GASTO") }
+    
+    val categoriasFamilia = listOf("Alimentación", "Suministros", "Ocio", "Transporte", "Salud", "Otros")
+    val categoriasPyme = listOf("Ventas", "Suministros", "Nóminas", "Alquiler", "Impuestos", "Otros")
+    
+    val categorias = if (profile == "PYME") categoriasPyme else categoriasFamilia
+    var categoriaSeleccionada by remember { mutableStateOf(categorias[0]) }
 
-    val categorias = listOf("Alimentación", "Suministros", "Ocio", "Transporte", "Salud", "Otros")
+    LaunchedEffect(profile) {
+        viewModel.loadProfile(profile)
+    }
 
     Column(
         modifier = Modifier
@@ -40,7 +53,7 @@ fun AddGastoScreen(onGastoGuardado: () -> Unit, onBack: () -> Unit) {
                 Text(text = "←", fontSize = 24.sp, color = Color.White)
             }
             Text(
-                text = "Añadir gasto",
+                text = if (profile == "PYME") "Añadir movimiento" else "Añadir gasto",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
@@ -54,7 +67,31 @@ fun AddGastoScreen(onGastoGuardado: () -> Unit, onBack: () -> Unit) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Spacer(modifier = Modifier.height(8.dp))
+            if (profile == "PYME") {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = { tipoSeleccionado = "GASTO" },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (tipoSeleccionado == "GASTO") Color(0xFFD32F2F) else Color.LightGray
+                        )
+                    ) {
+                        Text("Gasto")
+                    }
+                    Button(
+                        onClick = { tipoSeleccionado = "INGRESO" },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (tipoSeleccionado == "INGRESO") Color(0xFF388E3C) else Color.LightGray
+                        )
+                    ) {
+                        Text("Ingreso")
+                    }
+                }
+            }
 
             OutlinedTextField(
                 value = descripcion,
@@ -82,19 +119,20 @@ fun AddGastoScreen(onGastoGuardado: () -> Unit, onBack: () -> Unit) {
             )
 
             // Chips de categoría
-            categorias.chunked(3).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    row.forEach { categoria ->
-                        FilterChip(
-                            selected = categoriaSeleccionada == categoria,
-                            onClick = { categoriaSeleccionada = categoria },
-                            label = { Text(categoria, fontSize = 12.sp) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Color(0xFF1A3A6B),
-                                selectedLabelColor = Color.White
-                            )
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                categorias.forEach { categoria ->
+                    FilterChip(
+                        selected = categoriaSeleccionada == categoria,
+                        onClick = { categoriaSeleccionada = categoria },
+                        label = { Text(categoria, fontSize = 12.sp) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Color(0xFF1A3A6B),
+                            selectedLabelColor = Color.White
                         )
-                    }
+                    )
                 }
             }
 
@@ -102,7 +140,14 @@ fun AddGastoScreen(onGastoGuardado: () -> Unit, onBack: () -> Unit) {
 
             Button(
                 onClick = {
-                    if (descripcion.isNotBlank() && cantidad.isNotBlank()) {
+                    val amountValue = cantidad.toDoubleOrNull()
+                    if (descripcion.isNotBlank() && amountValue != null) {
+                        viewModel.insert(
+                            description = descripcion,
+                            amount = amountValue,
+                            category = categoriaSeleccionada,
+                            type = tipoSeleccionado
+                        )
                         onGastoGuardado()
                     }
                 },
@@ -110,8 +155,29 @@ fun AddGastoScreen(onGastoGuardado: () -> Unit, onBack: () -> Unit) {
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A3A6B))
             ) {
-                Text(text = "Guardar gasto", fontSize = 16.sp, modifier = Modifier.padding(8.dp))
+                Text(
+                    text = if (profile == "PYME") "Guardar movimiento" else "Guardar gasto",
+                    fontSize = 16.sp,
+                    modifier = Modifier.padding(8.dp)
+                )
             }
         }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun FlowRow(
+    modifier: Modifier = Modifier,
+    horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
+    verticalArrangement: Arrangement.Vertical = Arrangement.Top,
+    content: @Composable () -> Unit
+) {
+    androidx.compose.foundation.layout.FlowRow(
+        modifier = modifier,
+        horizontalArrangement = horizontalArrangement,
+        verticalArrangement = verticalArrangement
+    ) {
+        content()
     }
 }

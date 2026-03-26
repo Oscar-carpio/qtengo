@@ -8,6 +8,8 @@ import com.example.qtengo.data.dao.ProductDao
 import com.example.qtengo.data.dao.UserDao
 import com.example.qtengo.data.model.Product
 import com.example.qtengo.data.model.User
+import com.example.qtengo.data.dao.*
+import com.example.qtengo.data.model.*
 
 @Database(
     entities = [Product::class, User::class],
