@@ -5,21 +5,23 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
-import androidx.lifecycle.lifecycleScope
-import com.example.qtengo.data.local.database.AppDatabase
-import com.example.qtengo.data.local.model.User
-import com.example.qtengo.data.repository.UserRepository
-import com.example.qtengo.ui.auth.LoginScreen
-import com.example.qtengo.ui.auth.RegisterScreen
-import com.example.qtengo.ui.screens.*
-import com.example.qtengo.ui.theme.QtengoTheme
-import com.example.qtengo.ui.products.ProductScreen
+import com.example.qtengo.core.data.database.AppDatabase
+import com.example.qtengo.core.domain.models.User
+import com.example.qtengo.core.data.repositories.UserRepository
+import com.example.qtengo.core.ui.screens.SplashScreen
+import com.example.qtengo.core.ui.screens.ProfileScreen
+import com.example.qtengo.core.ui.theme.QtengoTheme
+import com.example.qtengo.login.ui.LoginScreen
+import com.example.qtengo.login.ui.RegisterScreen
+import com.example.qtengo.familiar.ui.FamiliarHomeScreen
+import com.example.qtengo.familiar.ui.GastosScreen
+import com.example.qtengo.pyme.ui.*
+import com.example.qtengo.restauracion.ui.RestauracionHomeScreen
 import com.example.qtengo.utils.SessionManager
-import kotlinx.coroutines.launch
 
 /**
- * Actividad principal que gestiona la navegación de la aplicación Q-Tengo.
- * Organizada por perfiles: Familiar, Pyme y Restauración.
+ * Actividad principal que sirve como punto de entrada a la aplicación.
+ * Inicializa la persistencia de sesión y gestiona la navegación global.
  */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,180 +33,168 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             QtengoTheme {
-                // Estados para controlar la navegación
-                var showSplash by remember { mutableStateOf(true) }
-                var usuarioLogueado by remember { mutableStateOf<User?>(null) }
-                var mostrarRegistro by remember { mutableStateOf(false) }
-                var currentScreen by remember { mutableStateOf("") }
-                val selectedShoppingList = remember { mutableStateOf<ShoppingList?>(null) }
-
-                // Estados para diálogos o pantallas secundarias
-                var showAddGasto by remember { mutableStateOf(false) }
-                var showAddInventario by remember { mutableStateOf(false) }
-
-                // Cargar sesión persistente
-                LaunchedEffect(Unit) {
-                    val savedEmail = sessionManager.getUserEmail()
-                    if (savedEmail != null) {
-                        val user = userRepository.getUserByEmail(savedEmail)
-                        if (user != null) {
-                            usuarioLogueado = user
-                        }
-                    }
-                }
-
-                when {
-                    showSplash -> SplashScreen(
-                        onSplashFinished = { showSplash = false }
-                    )
-                    usuarioLogueado == null && mostrarRegistro -> RegisterScreen(
-                        onRegistroExitoso = { user ->
-                            sessionManager.saveUserEmail(user.email)
-                            usuarioLogueado = user
-                            mostrarRegistro = false
-                        },
-                        onIrALogin = { mostrarRegistro = false }
-                    )
-                    usuarioLogueado == null -> LoginScreen(
-                        onLoginExitoso = { user ->
-                            sessionManager.saveUserEmail(user.email)
-                            usuarioLogueado = user
-                        },
-                        onIrARegistro = { mostrarRegistro = true }
-                    )
-                    
-                    // --- PERFIL FAMILIAR ---
-                    usuarioLogueado!!.perfil == "Familiar" -> {
-                        when (currentScreen) {
-                            "" -> FamiliarHomeScreen(
-                                onMenuSelected = { currentScreen = it },
-                                onBack = {
-                                    sessionManager.clearSession()
-                                    usuarioLogueado = null
-                                }
-                            )
-                            "Lista de la compra" -> {
-                                if (selectedShoppingList.value == null) {
-                                    ShoppingListScreen(
-                                        onListSelected = { selectedShoppingList.value = it },
-                                        onBack = { currentScreen = "" }
-                                    )
-                                } else {
-                                    ShoppingListDetailScreen(
-                                        shoppingList = selectedShoppingList.value!!,
-                                        onBack = { selectedShoppingList.value = null }
-                                    )
-                                }
-                            }
-                            "Control de gastos" -> {
-                                if (!showAddGasto) {
-                                    GastosScreen(
-                                        profile = "FAMILIA",
-                                        onAddGasto = { showAddGasto = true },
-                                        onBack = { currentScreen = "" }
-                                    )
-                                } else {
-                                    AddGastoScreen(
-                                        profile = "FAMILIA",
-                                        onGastoGuardado = { showAddGasto = false },
-                                        onBack = { showAddGasto = false }
-                                    )
-                                }
-                            }
-                            "Inventario del hogar" -> {
-                                if (!showAddInventario) {
-                                    InventarioScreen(
-                                        onAddItem = { showAddInventario = true },
-                                        onBack = { currentScreen = "" }
-                                    )
-                                } else {
-                                    AddInventarioScreen(
-                                        profile = "FAMILIA",
-                                        onItemGuardado = { showAddInventario = false },
-                                        onBack = { showAddInventario = false }
-                                    )
-                                }
-                            }
-                            "Tareas y recordatorios" -> {
-                                TaskScreen(
-                                    onBack = { currentScreen = "" }
-                                )
-                            }
-                            else -> currentScreen = ""
-                        }
-                    }
-
-                    // --- PERFIL PYME ---
-                    usuarioLogueado!!.perfil == "Pyme" -> {
-                        when (currentScreen) {
-                            "" -> PymeHomeScreen(
-                                onMenuSelected = { currentScreen = it },
-                                onBack = {
-                                    sessionManager.clearSession()
-                                    usuarioLogueado = null
-                                    currentScreen = ""
-                                }
-                            )
-                            "Productos / Stock" -> {
-                                ProductScreen(
-                                    profile = "PYME",
-                                    onBack = { currentScreen = "" }
-                                )
-                            }
-                            "Gastos e ingresos" -> {
-                                PymeFinanceScreen(
-                                    onBack = { currentScreen = "" }
-                                )
-                            }
-                            "Proveedores" -> {
-                                SupplierScreen(
-                                    profile = "PYME",
-                                    onBack = { currentScreen = "" }
-                                )
-                            }
-                            "Empleados" -> {
-                                EmployeeScreen(
-                                    profile = "PYME",
-                                    onBack = { currentScreen = "" }
-                                )
-                            }
-                            "Agenda de Tareas" -> {
-                                TaskScreen(
-                                    onBack = { currentScreen = "" }
-                                )
-                            }
-                            else -> currentScreen = ""
-                        }
-                    }
-
-                    // --- PERFIL RESTAURACIÓN ---
-                    usuarioLogueado!!.perfil == "Restauración" -> {
-                        when (currentScreen) {
-                            "" -> RestauracionHomeScreen(
-                                onMenuSelected = { currentScreen = it },
-                                onBack = {
-                                    sessionManager.clearSession()
-                                    usuarioLogueado = null
-                                    currentScreen = ""
-                                }
-                            )
-                            "Stock de cocina" -> {
-                                ProductScreen(
-                                    profile = "Restauración",
-                                    onBack = { currentScreen = "" }
-                                )
-                            }
-                            "Proveedores" -> {
-                                SupplierScreen(
-                                    profile = "Restauración",
-                                    onBack = { currentScreen = "" }
-                                )
-                            }
-                            else -> currentScreen = ""
-                        }
-                    }
-                }
+                AppNavigation(sessionManager, userRepository)
             }
         }
+    }
+}
+
+/**
+ * Orquestador principal de la navegación.
+ * Gestiona el flujo entre Splash, Autenticación, Selección de Perfil y las áreas de usuario.
+ */
+@Composable
+fun AppNavigation(sessionManager: SessionManager, userRepository: UserRepository) {
+    var showSplash by remember { mutableStateOf(true) }
+    var usuarioLogueado by remember { mutableStateOf<User?>(null) }
+    var mostrarRegistro by remember { mutableStateOf(false) }
+    var currentScreen by remember { mutableStateOf("") }
+    var showProfileSelection by remember { mutableStateOf(false) }
+
+    // Restaurar sesión si existe un token/email guardado
+    LaunchedEffect(Unit) {
+        val savedEmail = sessionManager.getUserEmail()
+        if (savedEmail != null) {
+            val user = userRepository.getUserByEmail(savedEmail)
+            if (user != null) {
+                usuarioLogueado = user
+            }
+        }
+    }
+
+    /**
+     * Cierra la sesión activa y limpia las preferencias del sistema.
+     */
+    val onLogout = {
+        sessionManager.clearSession()
+        usuarioLogueado = null
+        currentScreen = ""
+        showProfileSelection = false
+    }
+
+    /**
+     * Permite al usuario volver a la pantalla de selección de rol.
+     */
+    val onChangeProfile = {
+        showProfileSelection = true
+        currentScreen = ""
+    }
+
+    when {
+        showSplash -> SplashScreen(onSplashFinished = { showSplash = false })
+        
+        usuarioLogueado == null -> {
+            if (mostrarRegistro) {
+                RegisterScreen(
+                    onRegistroExitoso = { user ->
+                        sessionManager.saveUserEmail(user.email)
+                        usuarioLogueado = user
+                        mostrarRegistro = false
+                    },
+                    onIrALogin = { mostrarRegistro = false }
+                )
+            } else {
+                LoginScreen(
+                    onLoginExitoso = { user ->
+                        sessionManager.saveUserEmail(user.email)
+                        usuarioLogueado = user
+                    },
+                    onIrARegistro = { mostrarRegistro = true }
+                )
+            }
+        }
+
+        showProfileSelection -> ProfileScreen(onProfileSelected = { newProfile ->
+            usuarioLogueado = usuarioLogueado?.copy(perfil = newProfile)
+            showProfileSelection = false
+        })
+
+        else -> {
+            when (usuarioLogueado?.perfil) {
+                "Familiar" -> FamiliarNavigation(currentScreen, { currentScreen = it }, onLogout, onChangeProfile)
+                "Pyme" -> PymeNavigation(currentScreen, { currentScreen = it }, onLogout, onChangeProfile)
+                "Restauración" -> RestauracionNavigation(currentScreen, { currentScreen = it }, onLogout, onChangeProfile)
+            }
+        }
+    }
+}
+
+/**
+ * Gestiona la navegación específica del perfil Familiar.
+ */
+@Composable
+fun FamiliarNavigation(currentScreen: String, onScreenChange: (String) -> Unit, onLogout: () -> Unit, onChangeProfile: () -> Unit) {
+    when (currentScreen) {
+        "" -> FamiliarHomeScreen(onMenuSelected = onScreenChange, onLogout = onLogout, onChangeProfile = onChangeProfile)
+        "Control de gastos" -> GastosScreen(
+            onLogout = onLogout, 
+            onChangeProfile = onChangeProfile, 
+            onBack = { onScreenChange("") }
+        )
+        "Tareas y recordatorios" -> TaskScreen(
+            onBack = { onScreenChange("") },
+            onLogout = onLogout,
+            onChangeProfile = onChangeProfile
+        )
+        else -> onScreenChange("")
+    }
+}
+
+/**
+ * Gestiona la navegación específica del perfil Pyme.
+ */
+@Composable
+fun PymeNavigation(currentScreen: String, onScreenChange: (String) -> Unit, onLogout: () -> Unit, onChangeProfile: () -> Unit) {
+    when (currentScreen) {
+        "" -> PymeHomeScreen(onMenuSelected = onScreenChange, onLogout = onLogout, onChangeProfile = onChangeProfile)
+        "Productos / Stock" -> ProductScreen(
+            onBack = { onScreenChange("") }, 
+            onLogout = onLogout, 
+            onChangeProfile = onChangeProfile
+        )
+        "Gastos e ingresos" -> PymeFinanceScreen(
+            onBack = { onScreenChange("") },
+            onLogout = onLogout,
+            onChangeProfile = onChangeProfile
+        )
+        "Proveedores" -> SupplierScreen(
+            onBack = { onScreenChange("") },
+            onLogout = onLogout,
+            onChangeProfile = onChangeProfile
+        )
+        "Empleados" -> EmployeeScreen(
+            onBack = { onScreenChange("") },
+            onLogout = onLogout,
+            onChangeProfile = onChangeProfile
+        )
+        "Agenda de Tareas" -> TaskScreen(
+            onBack = { onScreenChange("") },
+            onLogout = onLogout,
+            onChangeProfile = onChangeProfile
+        )
+        else -> onScreenChange("")
+    }
+}
+
+/**
+ * Gestiona la navegación específica del perfil Restauración.
+ */
+@Composable
+fun RestauracionNavigation(currentScreen: String, onScreenChange: (String) -> Unit, onLogout: () -> Unit, onChangeProfile: () -> Unit) {
+    when (currentScreen) {
+        "" -> RestauracionHomeScreen(onMenuSelected = onScreenChange, onLogout = onLogout, onChangeProfile = onChangeProfile)
+        "Stock de cocina" -> ProductScreen(
+            profile = "Restauración", 
+            onBack = { onScreenChange("") }, 
+            onLogout = onLogout, 
+            onChangeProfile = onChangeProfile
+        )
+        "Proveedores" -> SupplierScreen(
+            profile = "Restauración", 
+            onBack = { onScreenChange("") },
+            onLogout = onLogout,
+            onChangeProfile = onChangeProfile
+        )
+        else -> onScreenChange("")
     }
 }
