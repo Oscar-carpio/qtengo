@@ -4,17 +4,24 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.example.qtengo.data.dao.ProductDao
-import com.example.qtengo.data.model.Product
+import com.example.qtengo.data.dao.*
+import com.example.qtengo.data.model.*
 
+/**
+ * Base de datos principal de la aplicación que utiliza Room.
+ */
 @Database(
-    entities = [Product::class],
-    version = 1,
+    entities = [
+        Product::class, 
+        Dish::class
+    ],
+    version = 2, 
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun productDao(): ProductDao
+    abstract fun dishDao(): DishDao
 
     companion object {
         @Volatile
@@ -26,7 +33,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "stockapp_database"
-                ).build()
+                )
+                .fallbackToDestructiveMigration()
+                .build()
                 INSTANCE = instance
                 instance
             }

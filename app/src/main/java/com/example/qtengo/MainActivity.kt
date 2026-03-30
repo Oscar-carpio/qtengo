@@ -5,20 +5,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
-import com.example.qtengo.ui.screens.FamiliarHomeScreen
-import com.example.qtengo.ui.screens.ProfileScreen
-import com.example.qtengo.ui.screens.PymeHomeScreen
-import com.example.qtengo.ui.screens.RestauracionHomeScreen
-import com.example.qtengo.ui.screens.ShoppingList
-import com.example.qtengo.ui.screens.ShoppingListScreen
-import com.example.qtengo.ui.screens.SplashScreen
+import com.example.qtengo.ui.screens.*
 import com.example.qtengo.ui.theme.QtengoTheme
-import com.example.qtengo.ui.screens.ShoppingListDetailScreen
-import com.example.qtengo.ui.screens.AddGastoScreen
-import com.example.qtengo.ui.screens.GastosScreen
-import com.example.qtengo.ui.screens.InventarioScreen
-import com.example.qtengo.ui.screens.AddInventarioScreen
-
+import com.example.qtengo.ui.products.ProductScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,8 +20,7 @@ class MainActivity : ComponentActivity() {
                 var currentScreen by remember { mutableStateOf("") }
                 val selectedShoppingList = remember { mutableStateOf<ShoppingList?>(null) }
                 var showAddGasto by remember { mutableStateOf(false) }
-                var showAddInventario by remember {mutableStateOf(false)}
-
+                var showAddInventario by remember { mutableStateOf(false) }
 
                 when {
                     showSplash -> SplashScreen(
@@ -41,46 +29,100 @@ class MainActivity : ComponentActivity() {
                     selectedProfile.isEmpty() -> ProfileScreen(
                         onProfileSelected = { selectedProfile = it }
                     )
-                    selectedProfile == "Familiar" && currentScreen.isEmpty() -> FamiliarHomeScreen(
-                        onMenuSelected = { currentScreen = it },
-                        onBack = { selectedProfile = "" }
-                    )
-                    selectedProfile == "Familiar" && currentScreen == "Lista de la compra" && selectedShoppingList.value == null -> ShoppingListScreen(
-                        onListSelected = { selectedShoppingList.value = it },
-                        onBack = { currentScreen = "" }
-                    )
-                    selectedProfile == "Familiar" && currentScreen == "Lista de la compra" && selectedShoppingList.value != null -> ShoppingListDetailScreen(
-                        shoppingList = selectedShoppingList.value!!,
-                        onBack = { selectedShoppingList.value = null }
-                    )
-                    selectedProfile == "Familiar" && currentScreen == "Control de gastos" && !showAddGasto -> GastosScreen(
-                        onAddGasto = { showAddGasto = true },
-                        onBack = { currentScreen = "" }
-                    )
-                    selectedProfile == "Familiar" && currentScreen == "Control de gastos" && showAddGasto -> AddGastoScreen(
-                        onGastoGuardado = { showAddGasto = false },
-                        onBack = { showAddGasto = false }
-                    )
-                    selectedProfile == "Familiar" && currentScreen == "Inventario del hogar" && !showAddInventario -> InventarioScreen(
-                        onAddItem = {showAddInventario = true},
-                        onBack = {currentScreen=""}
-                    )
-
-
-                    selectedProfile == "Pyme" && currentScreen.isEmpty() -> PymeHomeScreen(
-                        onMenuSelected = { currentScreen = it },
-                        onBack = {
-                            selectedProfile = ""
-                            currentScreen = ""
+                    
+                    // PERFIL FAMILIAR
+                    selectedProfile == "Familiar" -> {
+                        when (currentScreen) {
+                            "" -> FamiliarHomeScreen(
+                                onMenuSelected = { currentScreen = it },
+                                onBack = { selectedProfile = "" }
+                            )
+                            "Lista de la compra" -> {
+                                if (selectedShoppingList.value == null) {
+                                    ShoppingListScreen(
+                                        onListSelected = { selectedShoppingList.value = it },
+                                        onBack = { currentScreen = "" }
+                                    )
+                                } else {
+                                    ShoppingListDetailScreen(
+                                        shoppingList = selectedShoppingList.value!!,
+                                        onBack = { selectedShoppingList.value = null }
+                                    )
+                                }
+                            }
+                            "Control de gastos" -> {
+                                if (!showAddGasto) {
+                                    GastosScreen(
+                                        profile = "FAMILIA",
+                                        onAddGasto = { showAddGasto = true },
+                                        onBack = { currentScreen = "" }
+                                    )
+                                } else {
+                                    AddGastoScreen(
+                                        onGastoGuardado = { showAddGasto = false },
+                                        onBack = { showAddGasto = false }
+                                    )
+                                }
+                            }
+                            "Inventario del hogar" -> {
+                                if (!showAddInventario) {
+                                    InventarioScreen(
+                                        onAddItem = { showAddInventario = true },
+                                        onBack = { currentScreen = "" }
+                                    )
+                                } else {
+                                    AddInventarioScreen(
+                                        onItemGuardado = { showAddInventario = false },
+                                        onBack = { showAddInventario = false }
+                                    )
+                                }
+                            }
                         }
-                    )
-                    selectedProfile == "Restauración" && currentScreen.isEmpty() -> RestauracionHomeScreen(
-                        onMenuSelected = { currentScreen = it },
-                        onBack = {
-                            selectedProfile = ""
-                            currentScreen = ""
+                    }
+
+                    // PERFIL PYME
+                    selectedProfile == "Pyme" -> {
+                        when (currentScreen) {
+                            "" -> PymeHomeScreen(
+                                onMenuSelected = { currentScreen = it },
+                                onBack = { selectedProfile = "" }
+                            )
+                            "Productos / Stock" -> ProductScreen(
+                                profile = "PYME",
+                                onBack = { currentScreen = "" }
+                            )
+                            else -> PymeHomeScreen(
+                                onMenuSelected = { currentScreen = it },
+                                onBack = { selectedProfile = "" }
+                            )
                         }
-                    )
+                    }
+
+                    // PERFIL RESTAURACIÓN
+                    selectedProfile == "Restauración" -> {
+                        when (currentScreen) {
+                            "" -> RestauracionHomeScreen(
+                                onMenuSelected = { currentScreen = it },
+                                onBack = { selectedProfile = "" }
+                            )
+                            "Stock de cocina" -> ProductScreen(
+                                profile = "HOSTELERIA",
+                                onBack = { currentScreen = "" }
+                            )
+                            "Carta / Menú del día" -> DishScreen(
+                                profile = "HOSTELERIA",
+                                onBack = { currentScreen = "" }
+                            )
+                            "Proveedores" -> SupplierScreen(
+                                profile = "HOSTELERIA",
+                                onBack = { currentScreen = "" }
+                            )
+                            else -> RestauracionHomeScreen(
+                                onMenuSelected = { currentScreen = it },
+                                onBack = { selectedProfile = "" }
+                            )
+                        }
+                    }
                 }
             }
         }

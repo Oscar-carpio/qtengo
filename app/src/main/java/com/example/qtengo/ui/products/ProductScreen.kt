@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
@@ -20,7 +21,8 @@ import com.example.qtengo.data.model.Product
 @Composable
 fun ProductScreen(
     profile: String = "FAMILIA",
-    viewModel: ProductViewModel = viewModel()
+    viewModel: ProductViewModel = viewModel(),
+    onBack: () -> Unit
 ) {
     val products by viewModel.products.observeAsState(emptyList())
     var showAddDialog by remember { mutableStateOf(false) }
@@ -32,10 +34,16 @@ fun ProductScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Mis Productos") },
+                title = { Text("Mis Productos ($profile)") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         },
@@ -47,7 +55,6 @@ fun ProductScreen(
     ) { paddingValues ->
 
         if (products.isEmpty()) {
-            // Pantalla vacía
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -67,7 +74,6 @@ fun ProductScreen(
                 }
             }
         } else {
-            // Lista de productos
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -83,7 +89,6 @@ fun ProductScreen(
         }
     }
 
-    // Dialogo para añadir producto
     if (showAddDialog) {
         AddProductDialog(
             profile = profile,
