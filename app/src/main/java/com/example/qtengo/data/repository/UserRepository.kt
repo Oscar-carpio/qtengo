@@ -5,14 +5,15 @@ import com.example.qtengo.data.model.User
 
 class UserRepository(private val userDao: UserDao) {
 
-    suspend fun registrar(user: User): Boolean {
-        val existe = userDao.buscarPorEmail(user.email)
-        if (existe != null) return false
+    suspend fun registrar(user: User) {
         userDao.insertar(user)
-        return true
     }
 
-    suspend fun login(email: String, password: String): User? {
-        return userDao.login(email, password)
+    suspend fun buscarPorUid(uid: String): User? {
+        return userDao.buscarPorUid(uid)
+    }
+
+    suspend fun buscarPorEmail(email: String): User? {
+        return userDao.buscarPorEmail(email)
     }
 }

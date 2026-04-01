@@ -8,10 +8,9 @@ import com.example.qtengo.data.dao.ProductDao
 import com.example.qtengo.data.dao.UserDao
 import com.example.qtengo.data.model.Product
 import com.example.qtengo.data.model.User
-
 @Database(
     entities = [Product::class, User::class],
-    version = 2,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
