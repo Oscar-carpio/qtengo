@@ -10,11 +10,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.qtengo.data.local.model.User
 
 @Composable
 fun RegisterScreen(
-    onRegistroExitoso: (User) -> Unit,
+    onRegistroExitoso: (uid: String, perfil: String) -> Unit,
     onIrALogin: () -> Unit,
     authViewModel: AuthViewModel = viewModel()
 ) {
@@ -33,13 +32,14 @@ fun RegisterScreen(
     val authState by authViewModel.authState.collectAsState()
     val perfiles = listOf("Familiar", "Restauración", "Pyme")
 
+    // Navegar cuando el registro sea exitoso
+    // ✅ Así debe quedar — sin reset()
     LaunchedEffect(authState) {
         if (authState is AuthState.Success) {
-            onRegistroExitoso((authState as AuthState.Success).user)
-            authViewModel.reset()
+            val success = authState as AuthState.Success
+            onRegistroExitoso(success.uid, success.perfil)
         }
     }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -143,6 +143,7 @@ fun RegisterScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Mostrar error de Firebase si lo hay
         if (authState is AuthState.Error) {
             Text(
                 text = (authState as AuthState.Error).mensaje,
@@ -151,45 +152,40 @@ fun RegisterScreen(
             Spacer(modifier = Modifier.height(8.dp))
         }
 
+        // Botón con loading
         Button(
             onClick = {
                 var valido = true
 
-                if (nombre.trim().isEmpty()) {
-                    errorNombre = "El nombre no puede estar vacío"
-                    valido = false
-                }
-                if (apellidos.trim().isEmpty()) {
-                    errorApellidos = "Los apellidos no pueden estar vacíos"
-                    valido = false
-                }
-                if (email.trim().isEmpty()) {
-                    errorEmail = "El email no puede estar vacío"
-                    valido = false
-                }
-                if (password.trim().isEmpty()) {
-                    errorPassword = "La contraseña no puede estar vacía"
-                    valido = false
-                }
-                if (perfilSeleccionado.isEmpty()) {
-                    errorPerfil = "Debes seleccionar un perfil"
-                    valido = false
-                }
+                if (nombre.trim().isEmpty()) { errorNombre = "El nombre no puede estar vacío"; valido = false }
+                if (apellidos.trim().isEmpty()) { errorApellidos = "Los apellidos no pueden estar vacíos"; valido = false }
+                if (email.trim().isEmpty()) { errorEmail = "El email no puede estar vacío"; valido = false }
+                if (password.trim().isEmpty()) { errorPassword = "La contraseña no puede estar vacía"; valido = false }
+                if (perfilSeleccionado.isEmpty()) { errorPerfil = "Debes seleccionar un perfil"; valido = false }
 
                 if (valido) {
                     authViewModel.registrar(
-                        nombre.trim(),
-                        apellidos.trim(),
-                        "",
-                        email.trim(),
-                        password.trim(),
-                        perfilSeleccionado
+                        nombre = nombre.trim(),
+                        apellido1 = apellidos.trim(),
+                        apellido2 = "",
+                        email = email.trim(),
+                        password = password.trim(),
+                        perfil = perfilSeleccionado
                     )
                 }
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            enabled = authState !is AuthState.Loading
         ) {
-            Text("Registrarse")
+            if (authState is AuthState.Loading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            } else {
+                Text("Registrarse")
+            }
         }
 
         Spacer(modifier = Modifier.height(12.dp))

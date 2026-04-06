@@ -1,4 +1,4 @@
-package com.example.qtengo.ui.screens
+package com.example.qtengo.ui.familiar
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

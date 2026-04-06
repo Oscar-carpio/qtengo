@@ -1,4 +1,4 @@
-package com.example.qtengo.ui.screens
+package com.example.qtengo.ui.familiar.inventario
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -12,21 +12,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.qtengo.data.local.model.Product
-import com.example.qtengo.ui.products.ProductViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddInventarioScreen(
-    profile: String = "FAMILIA",
-    productViewModel: ProductViewModel = viewModel(),
-    onItemGuardado: () -> Unit, 
-    onBack: () -> Unit
+    onItemGuardado: () -> Unit,
+    onBack: () -> Unit,
+    viewModel: InventarioViewModel = viewModel()
 ) {
     var nombre by remember { mutableStateOf("") }
     var cantidad by remember { mutableStateOf("") }
     var minStock by remember { mutableStateOf("1") }
     var notas by remember { mutableStateOf("") }
+    var fechaCaducidad by remember { mutableStateOf("") }
+    var tieneFechaCaducidad by remember { mutableStateOf(false) }
 
     val ubicaciones = listOf("Cocina", "Despensa", "Lavadero", "Trastero", "Baño", "Otros")
     var ubicacionSeleccionada by remember { mutableStateOf("Cocina") }
@@ -102,6 +100,38 @@ fun AddInventarioScreen(
                 shape = RoundedCornerShape(12.dp)
             )
 
+            // Switch fecha de caducidad
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Tiene fecha de caducidad",
+                    fontSize = 14.sp,
+                    color = Color(0xFF1A3A6B),
+                    modifier = Modifier.weight(1f)
+                )
+                Switch(
+                    checked = tieneFechaCaducidad,
+                    onCheckedChange = {
+                        tieneFechaCaducidad = it
+                        if (!it) fechaCaducidad = ""
+                    },
+                    colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF1A3A6B))
+                )
+            }
+
+            if (tieneFechaCaducidad) {
+                OutlinedTextField(
+                    value = fechaCaducidad,
+                    onValueChange = { fechaCaducidad = it },
+                    label = { Text("Fecha caducidad (dd/MM/yyyy)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+            }
+
             Text(
                 text = "Ubicación / Categoría",
                 fontSize = 14.sp,
@@ -132,16 +162,14 @@ fun AddInventarioScreen(
             Button(
                 onClick = {
                     if (nombre.isNotBlank() && cantidad.isNotBlank()) {
-                        val product = Product(
-                            name = nombre,
-                            quantity = cantidad.toDoubleOrNull() ?: 0.0,
-                            minStock = minStock.toDoubleOrNull() ?: 1.0,
-                            category = ubicacionSeleccionada,
-                            profile = profile,
-                            unit = "ud.",
-                            notes = notas
+                        viewModel.añadirItem(
+                            nombre = nombre,
+                            cantidad = cantidad.toIntOrNull() ?: 0,
+                            ubicacion = ubicacionSeleccionada,
+                            minStock = minStock.toIntOrNull() ?: 1,
+                            notas = notas,
+                            fechaCaducidad = fechaCaducidad.ifBlank { null }
                         )
-                        productViewModel.insert(product)
                         onItemGuardado()
                     }
                 },

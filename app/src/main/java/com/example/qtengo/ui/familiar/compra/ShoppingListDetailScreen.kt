@@ -1,11 +1,12 @@
-package com.example.qtengo.ui.screens
+package com.example.qtengo.ui.familiar.compra
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,28 +16,39 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-data class ShoppingItem(val id: Int, val name: String, val quantity: String, var isChecked: Boolean = false)
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.qtengo.ui.familiar.compra.ShoppingList
+import com.example.qtengo.ui.familiar.compra.ShoppingListViewModel
+import com.example.qtengo.ui.familiar.gastos.GastosViewModel
 
 @Composable
-fun ShoppingListDetailScreen(shoppingList: ShoppingList, onBack: () -> Unit) {
-
+fun ShoppingListDetailScreen(
+    shoppingList: ShoppingList,
+    onBack: () -> Unit,
+    viewModel: ShoppingListViewModel = viewModel(),
+    gastosViewModel: GastosViewModel = viewModel()
+) {
     var showDialog by remember { mutableStateOf(false) }
     var newItemName by remember { mutableStateOf("") }
     var newItemQuantity by remember { mutableStateOf("") }
-    var items by remember {
-        mutableStateOf(
-            listOf(
-                ShoppingItem(1, "Leche", "2 litros"),
-                ShoppingItem(2, "Pan", "1 barra"),
-                ShoppingItem(3, "Huevos", "12 unidades"),
-            )
-        )
+    var showGastoDialog by remember { mutableStateOf(false) }
+    var gastoTotal by remember { mutableStateOf("") }
+
+    val items by viewModel.items.collectAsState()
+    val listaCompleta = items.isNotEmpty() && items.all { it.isChecked }
+
+    LaunchedEffect(shoppingList.id) {
+        viewModel.cargarItems(shoppingList.id)
     }
 
+    // Diálogo añadir producto
     if (showDialog) {
         AlertDialog(
-            onDismissRequest = { showDialog = false },
+            onDismissRequest = {
+                showDialog = false
+                newItemName = ""
+                newItemQuantity = ""
+            },
             title = { Text("Añadir producto") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -57,11 +69,7 @@ fun ShoppingListDetailScreen(shoppingList: ShoppingList, onBack: () -> Unit) {
             confirmButton = {
                 TextButton(onClick = {
                     if (newItemName.isNotBlank()) {
-                        items = items + ShoppingItem(
-                            id = items.size + 1,
-                            name = newItemName,
-                            quantity = newItemQuantity.ifBlank { "1 unidad" }
-                        )
+                        viewModel.añadirItem(shoppingList.id, newItemName, newItemQuantity)
                         newItemName = ""
                         newItemQuantity = ""
                         showDialog = false
@@ -69,7 +77,57 @@ fun ShoppingListDetailScreen(shoppingList: ShoppingList, onBack: () -> Unit) {
                 }) { Text("Añadir") }
             },
             dismissButton = {
-                TextButton(onClick = { showDialog = false }) { Text("Cancelar") }
+                TextButton(onClick = {
+                    showDialog = false
+                    newItemName = ""
+                    newItemQuantity = ""
+                }) { Text("Cancelar") }
+            }
+        )
+    }
+
+    // Diálogo registrar gasto
+    if (showGastoDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showGastoDialog = false
+                gastoTotal = ""
+            },
+            title = { Text("Registrar gasto de la compra") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "¿Cuánto has gastado en \"${shoppingList.name}\"?",
+                        fontSize = 14.sp,
+                        color = Color.Gray
+                    )
+                    OutlinedTextField(
+                        value = gastoTotal,
+                        onValueChange = { gastoTotal = it },
+                        label = { Text("Total (€)") },
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val cantidad = gastoTotal.toDoubleOrNull()
+                    if (cantidad != null && cantidad > 0) {
+                        gastosViewModel.registrarGastoDesdeLista(
+                            listaId = shoppingList.id,
+                            nombreLista = shoppingList.name,
+                            cantidad = cantidad
+                        )
+                        showGastoDialog = false
+                        gastoTotal = ""
+                    }
+                }) { Text("Registrar") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showGastoDialog = false
+                    gastoTotal = ""
+                }) { Text("Cancelar") }
             }
         )
     }
@@ -116,7 +174,49 @@ fun ShoppingListDetailScreen(shoppingList: ShoppingList, onBack: () -> Unit) {
             trackColor = Color(0xFFBBDEFB)
         )
 
-        // Lista de productos
+        // Banner lista completa
+        if (listaCompleta) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF388E3C))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(
+                            text = "✅ ¡Lista completada!",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "¿Quieres registrar el gasto?",
+                            fontSize = 12.sp,
+                            color = Color.White.copy(alpha = 0.8f)
+                        )
+                    }
+                    Button(
+                        onClick = { showGastoDialog = true },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.White)
+                    ) {
+                        Text(
+                            text = "Registrar",
+                            color = Color(0xFF388E3C),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+
         LazyColumn(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -140,13 +240,9 @@ fun ShoppingListDetailScreen(shoppingList: ShoppingList, onBack: () -> Unit) {
                         Checkbox(
                             checked = item.isChecked,
                             onCheckedChange = { checked ->
-                                items = items.map {
-                                    if (it.id == item.id) it.copy(isChecked = checked) else it
-                                }
+                                viewModel.toggleItem(shoppingList.id, item.id, checked)
                             },
-                            colors = CheckboxDefaults.colors(
-                                checkedColor = Color(0xFF1A3A6B)
-                            )
+                            colors = CheckboxDefaults.colors(checkedColor = Color(0xFF1A3A6B))
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Column(modifier = Modifier.weight(1f)) {
@@ -157,10 +253,13 @@ fun ShoppingListDetailScreen(shoppingList: ShoppingList, onBack: () -> Unit) {
                                 color = if (item.isChecked) Color.Gray else Color(0xFF1A3A6B),
                                 textDecoration = if (item.isChecked) TextDecoration.LineThrough else TextDecoration.None
                             )
-                            Text(
-                                text = item.quantity,
-                                fontSize = 12.sp,
-                                color = Color.Gray
+                            Text(text = item.quantity, fontSize = 12.sp, color = Color.Gray)
+                        }
+                        IconButton(onClick = { viewModel.eliminarItem(shoppingList.id, item.id) }) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Eliminar producto",
+                                tint = Color(0xFF1A3A6B)
                             )
                         }
                     }
@@ -168,7 +267,6 @@ fun ShoppingListDetailScreen(shoppingList: ShoppingList, onBack: () -> Unit) {
             }
         }
 
-        // Botón añadir producto
         Button(
             onClick = { showDialog = true },
             modifier = Modifier

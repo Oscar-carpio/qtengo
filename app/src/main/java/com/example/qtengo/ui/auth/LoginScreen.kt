@@ -8,11 +8,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.qtengo.data.local.model.User
 
 @Composable
 fun LoginScreen(
-    onLoginExitoso: (User) -> Unit,
+    onLoginExitoso: (uid: String, perfil: String) -> Unit,
     onIrARegistro: () -> Unit,
     authViewModel: AuthViewModel = viewModel()
 ) {
@@ -21,9 +20,11 @@ fun LoginScreen(
 
     val authState by authViewModel.authState.collectAsState()
 
+    // Navegar cuando el login sea exitoso
     LaunchedEffect(authState) {
         if (authState is AuthState.Success) {
-            onLoginExitoso((authState as AuthState.Success).user)
+            val success = authState as AuthState.Success
+            onLoginExitoso(success.uid, success.perfil)
             authViewModel.reset()
         }
     }
@@ -58,6 +59,7 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        // Mostrar error si lo hay
         if (authState is AuthState.Error) {
             Text(
                 text = (authState as AuthState.Error).mensaje,
@@ -66,11 +68,21 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(8.dp))
         }
 
+        // Botón con loading
         Button(
             onClick = { authViewModel.login(email, password) },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            enabled = authState !is AuthState.Loading
         ) {
-            Text("Entrar")
+            if (authState is AuthState.Loading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            } else {
+                Text("Entrar")
+            }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
