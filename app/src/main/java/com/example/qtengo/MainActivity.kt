@@ -11,26 +11,27 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.example.qtengo.ui.auth.LoginScreen
-import com.example.qtengo.ui.auth.RegisterScreen
-import com.example.qtengo.ui.familiar.FamiliarHomeScreen
-import com.example.qtengo.ui.familiar.compra.ShoppingListScreen
-import com.example.qtengo.ui.familiar.compra.ShoppingListDetailScreen
-import com.example.qtengo.ui.familiar.compra.ShoppingList
-import com.example.qtengo.ui.familiar.gastos.GastosScreen
-import com.example.qtengo.ui.familiar.gastos.AddGastoScreen
-import com.example.qtengo.ui.familiar.inventario.InventarioScreen
-import com.example.qtengo.ui.familiar.inventario.AddInventarioScreen
-import com.example.qtengo.ui.familiar.tareas.TareasScreen
+import com.example.qtengo.login.ui.LoginScreen
+import com.example.qtengo.login.ui.RegisterScreen
+import com.example.qtengo.familiar.ui.FamiliarHomeScreen
+import com.example.qtengo.familiar.ui.compra.ShoppingListScreen
+import com.example.qtengo.familiar.ui.compra.ShoppingListDetailScreen
+import com.example.qtengo.familiar.ui.compra.ShoppingList
+import com.example.qtengo.familiar.ui.gastos.GastosScreen
+import com.example.qtengo.familiar.ui.gastos.AddGastoScreen
+import com.example.qtengo.familiar.ui.inventario.InventarioScreen
+import com.example.qtengo.familiar.ui.inventario.AddInventarioScreen
+import com.example.qtengo.familiar.ui.tareas.TareasScreen
 
-import com.example.qtengo.ui.screens.PymeHomeScreen
-import com.example.qtengo.ui.screens.RestauracionHomeScreen
-import com.example.qtengo.ui.screens.PymeFinanceScreen
-import com.example.qtengo.ui.screens.EmployeeScreen
-import com.example.qtengo.ui.screens.SupplierScreen
-import com.example.qtengo.ui.screens.SplashScreen
-import com.example.qtengo.ui.products.ProductScreen
-import com.example.qtengo.ui.theme.QtengoTheme
+import com.example.qtengo.pyme.ui.PymeHomeScreen
+import com.example.qtengo.restauracion.ui.RestauracionHomeScreen
+import com.example.qtengo.pyme.ui.PymeFinanceScreen
+import com.example.qtengo.pyme.ui.EmployeeScreen
+import com.example.qtengo.pyme.ui.SupplierScreen
+import com.example.qtengo.pyme.ui.ProductScreen
+import com.example.qtengo.pyme.ui.TaskScreen
+import com.example.qtengo.core.ui.screens.SplashScreen
+import com.example.qtengo.core.ui.theme.QtengoTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
@@ -134,7 +135,8 @@ class MainActivity : ComponentActivity() {
                         when (currentScreen) {
                             "" -> FamiliarHomeScreen(
                                 onMenuSelected = { currentScreen = it },
-                                onBack = { cerrarSesion() }
+                                onLogout = { cerrarSesion() },
+                                onChangeProfile = { /* TODO */ }
                             )
                             "Lista de la compra" -> {
                                 if (selectedShoppingList.value == null) {
@@ -187,25 +189,36 @@ class MainActivity : ComponentActivity() {
                         when (currentScreen) {
                             "" -> PymeHomeScreen(
                                 onMenuSelected = { currentScreen = it },
-                                onBack = { cerrarSesion() }
+                                onLogout = { cerrarSesion() },
+                                onChangeProfile = { /* TODO */ }
                             )
                             "Productos / Stock" -> ProductScreen(
                                 profile = "PYME",
-                                onBack = { currentScreen = "" }
+                                onBack = { currentScreen = "" },
+                                onLogout = { cerrarSesion() },
+                                onChangeProfile = { /* TODO */ }
                             )
                             "Gastos e ingresos" -> PymeFinanceScreen(
-                                onBack = { currentScreen = "" }
+                                onBack = { currentScreen = "" },
+                                onLogout = { cerrarSesion() },
+                                onChangeProfile = { /* TODO */ }
                             )
                             "Proveedores" -> SupplierScreen(
                                 profile = "PYME",
-                                onBack = { currentScreen = "" }
+                                onBack = { currentScreen = "" },
+                                onLogout = { cerrarSesion() },
+                                onChangeProfile = { /* TODO */ }
                             )
                             "Empleados" -> EmployeeScreen(
                                 profile = "PYME",
-                                onBack = { currentScreen = "" }
+                                onBack = { currentScreen = "" },
+                                onLogout = { cerrarSesion() },
+                                onChangeProfile = { /* TODO */ }
                             )
-                            "Agenda de Tareas" -> TareasScreen(
-                                onBack = { currentScreen = "" }
+                            "Agenda de Tareas" -> TaskScreen(
+                                onBack = { currentScreen = "" },
+                                onLogout = { cerrarSesion() },
+                                onChangeProfile = { /* TODO */ }
                             )
                             else -> currentScreen = ""
                         }
@@ -216,15 +229,20 @@ class MainActivity : ComponentActivity() {
                         when (currentScreen) {
                             "" -> RestauracionHomeScreen(
                                 onMenuSelected = { currentScreen = it },
-                                onBack = { cerrarSesion() }
+                                onLogout = { cerrarSesion() },
+                                onChangeProfile = { /* TODO */ }
                             )
                             "Stock de cocina" -> ProductScreen(
                                 profile = "Restauración",
-                                onBack = { currentScreen = "" }
+                                onBack = { currentScreen = "" },
+                                onLogout = { cerrarSesion() },
+                                onChangeProfile = { /* TODO */ }
                             )
                             "Proveedores" -> SupplierScreen(
                                 profile = "Restauración",
-                                onBack = { currentScreen = "" }
+                                onBack = { currentScreen = "" },
+                                onLogout = { cerrarSesion() },
+                                onChangeProfile = { /* TODO */ }
                             )
                             else -> currentScreen = ""
                         }

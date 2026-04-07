@@ -1,4 +1,4 @@
-package com.example.qtengo.ui.auth
+package com.example.qtengo.login.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -33,13 +33,13 @@ fun RegisterScreen(
     val perfiles = listOf("Familiar", "Restauración", "Pyme")
 
     // Navegar cuando el registro sea exitoso
-    // ✅ Así debe quedar — sin reset()
     LaunchedEffect(authState) {
         if (authState is AuthState.Success) {
             val success = authState as AuthState.Success
             onRegistroExitoso(success.uid, success.perfil)
         }
     }
+
     Column(
         modifier = Modifier
             .fillMaxSize()

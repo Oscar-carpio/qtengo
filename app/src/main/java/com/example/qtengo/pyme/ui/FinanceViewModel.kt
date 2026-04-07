@@ -1,30 +1,29 @@
 package com.example.qtengo.pyme.ui
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.asLiveData
+import androidx.lifecycle.map
 import androidx.lifecycle.viewModelScope
-import com.example.qtengo.core.data.database.AppDatabase
 import com.example.qtengo.core.domain.models.FinanceMovement
 import com.example.qtengo.core.data.repositories.FinanceRepository
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel que gestiona la lógica financiera (ingresos y gastos) del módulo Pyme.
+ * ViewModel que gestiona la lógica financiera (ingresos y gastos) del módulo Pyme usando Firebase.
  */
-class FinanceViewModel(application: Application) : AndroidViewModel(application) {
+class FinanceViewModel(
+    private val repository: FinanceRepository = FinanceRepository()
+) : ViewModel() {
 
-    private val repository: FinanceRepository
-    val movements: LiveData<List<FinanceMovement>>
-    val totalIngresos: LiveData<Double?>
-    val totalGastos: LiveData<Double?>
+    val movements: LiveData<List<FinanceMovement>> = repository.getAllFlow("PYME").asLiveData()
 
-    init {
-        val dao = AppDatabase.getDatabase(application).financeDao()
-        repository = FinanceRepository(dao)
-        movements = repository.getAll("PYME")
-        totalIngresos = repository.getTotalIngresos("PYME")
-        totalGastos = repository.getTotalGastos("PYME")
+    val totalIngresos: LiveData<Double?> = movements.map { list ->
+        list.filter { it.type == "INGRESO" }.sumOf { it.amount }.takeIf { it > 0.0 }
+    }
+
+    val totalGastos: LiveData<Double?> = movements.map { list ->
+        list.filter { it.type == "GASTO" }.sumOf { it.amount }.takeIf { it > 0.0 }
     }
 
     /**
@@ -38,6 +37,6 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
      * Elimina un movimiento financiero existente.
      */
     fun delete(movement: FinanceMovement) = viewModelScope.launch {
-        repository.delete(movement)
+        repository.delete(movement.id)
     }
 }

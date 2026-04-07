@@ -1,27 +1,23 @@
 package com.example.qtengo.pyme.ui
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.viewModelScope
-import com.example.qtengo.core.data.database.AppDatabase
+import androidx.lifecycle.*
 import com.example.qtengo.core.domain.models.Supplier
 import com.example.qtengo.core.data.repositories.SupplierRepository
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel para la gestión de proveedores en el módulo Pyme.
+ * ViewModel para la gestión de proveedores en el módulo Pyme usando Firebase.
  */
-class SupplierViewModel(application: Application) : AndroidViewModel(application) {
+class SupplierViewModel : ViewModel() {
 
-    private val repository: SupplierRepository
-    private var currentProfile: String = "PYME"
+    private val repository = SupplierRepository()
+    private val _profileFilter = MutableLiveData<String>()
 
-    lateinit var suppliers: LiveData<List<Supplier>>
+    val suppliers: LiveData<List<Supplier>> = _profileFilter.switchMap { profile ->
+        repository.getByProfileFlow(profile).asLiveData()
+    }
 
     init {
-        val dao = AppDatabase.getDatabase(application).supplierDao()
-        repository = SupplierRepository(dao)
         loadProfile("PYME")
     }
 
@@ -29,8 +25,7 @@ class SupplierViewModel(application: Application) : AndroidViewModel(application
      * Filtra los proveedores por el perfil seleccionado.
      */
     fun loadProfile(profile: String) {
-        currentProfile = profile
-        suppliers = repository.getByProfile(profile)
+        _profileFilter.value = profile
     }
 
     /**
@@ -43,7 +38,7 @@ class SupplierViewModel(application: Application) : AndroidViewModel(application
             phone = phone,
             email = email,
             category = category,
-            profile = currentProfile
+            profile = _profileFilter.value ?: "PYME"
         )
         repository.insert(supplier)
     }
@@ -52,6 +47,6 @@ class SupplierViewModel(application: Application) : AndroidViewModel(application
      * Elimina un proveedor.
      */
     fun delete(supplier: Supplier) = viewModelScope.launch {
-        repository.delete(supplier)
+        repository.delete(supplier.id)
     }
 }

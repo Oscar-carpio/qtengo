@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "113143097949",
-    "project_id": "q-tengo",
-    "storage_bucket": "q-tengo.firebasestorage.app"
+    "project_number": "383742052085",
+    "project_id": "qtengo-d8657",
+    "storage_bucket": "qtengo-d8657.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:113143097949:android:997eee24c2ac56e9c1fbb4",
+        "mobilesdk_app_id": "1:383742052085:android:26e21aece1860da58ee7bc",
         "android_client_info": {
           "package_name": "com.example.qtengo"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCT8Zca_4QGMQ3ZzasNgNN5XYuE8LSTgdw"
+          "current_key": "AIzaSyBTsY5JT3t0HX7ySlLe4X7vtMLJuq9-_xM"
         }
       ],
       "services": {

@@ -1,14 +1,41 @@
 package com.example.qtengo.core.data.repositories
 
-import androidx.lifecycle.LiveData
-import com.example.qtengo.core.data.database.dao.ExpenseDao
 import com.example.qtengo.core.domain.models.Expense
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.tasks.await
 
-class ExpenseRepository(private val expenseDao: ExpenseDao) {
-    fun getByProfile(profile: String): LiveData<List<Expense>> = expenseDao.getByProfile(profile)
-    fun getTotalExpenses(profile: String): LiveData<Double?> = expenseDao.getTotalExpenses(profile)
-    fun getTotalIncomes(profile: String): LiveData<Double?> = expenseDao.getTotalIncomes(profile)
-    suspend fun insert(expense: Expense) = expenseDao.insert(expense)
-    suspend fun update(expense: Expense) = expenseDao.update(expense)
-    suspend fun delete(expense: Expense) = expenseDao.delete(expense)
+class ExpenseRepository {
+    private val firestore = FirebaseFirestore.getInstance()
+    private val collection = firestore.collection("expenses")
+
+    fun getByProfileFlow(profile: String): Flow<List<Expense>> = callbackFlow {
+        val listener = collection
+            .whereEqualTo("profile", profile)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                val expenses = snapshot?.documents?.mapNotNull { doc ->
+                    doc.toObject(Expense::class.java)?.copy(id = doc.id)
+                } ?: emptyList()
+                trySend(expenses)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    suspend fun insert(expense: Expense) {
+        collection.add(expense).await()
+    }
+
+    suspend fun update(expense: Expense) {
+        collection.document(expense.id).set(expense).await()
+    }
+
+    suspend fun delete(expense: Expense) {
+        collection.document(expense.id).delete().await()
+    }
 }

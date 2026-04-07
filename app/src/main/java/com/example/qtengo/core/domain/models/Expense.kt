@@ -1,17 +1,12 @@
 package com.example.qtengo.core.domain.models
 
-import androidx.room.Entity
-import androidx.room.PrimaryKey
-
-@Entity(tableName = "expenses")
 data class Expense(
-    @PrimaryKey(autoGenerate = true)
-    val id: Int = 0,
-    val name: String,
+    val id: String = "",
+    val name: String = "",
     val details: String = "",
-    val amount: Double,
-    val category: String,
-    val date: String,
-    val type: String,
-    val profile: String
+    val amount: Double = 0.0,
+    val category: String = "",
+    val date: String = "",
+    val type: String = "",
+    val profile: String = ""
 )

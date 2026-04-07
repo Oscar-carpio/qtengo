@@ -1,4 +1,4 @@
-package com.example.qtengo.ui.auth
+package com.example.qtengo.login.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

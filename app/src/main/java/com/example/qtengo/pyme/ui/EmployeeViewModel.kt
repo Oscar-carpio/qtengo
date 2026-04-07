@@ -1,36 +1,31 @@
 package com.example.qtengo.pyme.ui
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.viewModelScope
-import com.example.qtengo.core.data.database.AppDatabase
+import androidx.lifecycle.*
 import com.example.qtengo.core.domain.models.Employee
 import com.example.qtengo.core.data.repositories.EmployeeRepository
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel para gestionar la lógica de la plantilla de empleados en el módulo Pyme.
+ * ViewModel para gestionar la lógica de la plantilla de empleados en el módulo Pyme usando Firebase.
  */
-class EmployeeViewModel(application: Application) : AndroidViewModel(application) {
+class EmployeeViewModel : ViewModel() {
 
-    private val repository: EmployeeRepository
-    private var currentProfile: String = "PYME"
-
-    lateinit var employees: LiveData<List<Employee>>
-
-    init {
-        val dao = AppDatabase.getDatabase(application).employeeDao()
-        repository = EmployeeRepository(dao)
-        loadProfile("PYME")
-    }
+    private val repository = EmployeeRepository()
+    private val profileFilter = MutableLiveData<String>()
 
     /**
      * Carga la lista de empleados filtrada por el perfil activo.
      */
+    val employees: LiveData<List<Employee>> = profileFilter.switchMap { profile ->
+        repository.getByProfileFlow(profile).asLiveData()
+    }
+
+    init {
+        loadProfile("PYME")
+    }
+
     fun loadProfile(profile: String) {
-        currentProfile = profile
-        employees = repository.getByProfile(profile)
+        profileFilter.value = profile
     }
 
     /**
@@ -43,7 +38,7 @@ class EmployeeViewModel(application: Application) : AndroidViewModel(application
             salary = salary,
             phone = phone,
             startDate = startDate,
-            profile = currentProfile
+            profile = profileFilter.value ?: "PYME"
         )
         repository.insert(employee)
     }
@@ -52,6 +47,6 @@ class EmployeeViewModel(application: Application) : AndroidViewModel(application
      * Elimina a un empleado de la base de datos.
      */
     fun delete(employee: Employee) = viewModelScope.launch {
-        repository.delete(employee)
+        repository.delete(employee.id)
     }
 }
