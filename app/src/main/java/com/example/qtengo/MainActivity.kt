@@ -17,7 +17,7 @@ import com.example.qtengo.ui.familiar.FamiliarHomeScreen
 import com.example.qtengo.ui.familiar.compra.ShoppingListScreen
 import com.example.qtengo.ui.familiar.compra.ShoppingListDetailScreen
 import com.example.qtengo.ui.familiar.compra.ShoppingList
-import com.example.qtengo.ui.familiar.gastos.GastosScreen
+import com.example.qtengo.ui.familiar.gastos.GastosScreengit
 import com.example.qtengo.ui.familiar.gastos.AddGastoScreen
 import com.example.qtengo.ui.familiar.inventario.InventarioScreen
 import com.example.qtengo.ui.familiar.inventario.AddInventarioScreen
