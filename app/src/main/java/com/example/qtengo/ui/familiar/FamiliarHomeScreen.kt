@@ -1,4 +1,8 @@
+<<<<<<<< HEAD:app/src/main/java/com/example/qtengo/familiar/ui/FamiliarHomeScreen.kt
 package com.example.qtengo.familiar.ui
+========
+package com.example.qtengo.ui.familiar
+>>>>>>>> 572f4ca9c7589a4317d732df4ed669dc626e28a1:app/src/main/java/com/example/qtengo/ui/familiar/FamiliarHomeScreen.kt
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

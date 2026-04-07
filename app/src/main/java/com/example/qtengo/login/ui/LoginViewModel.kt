@@ -1,30 +1,40 @@
-package com.example.qtengo.login.ui
+package com.example.qtengo.ui.auth
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.qtengo.core.data.database.AppDatabase
-import com.example.qtengo.core.domain.models.User
-import com.example.qtengo.core.data.repositories.UserRepository
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
-class LoginViewModel(application: Application) : AndroidViewModel(application) {
+class AuthViewModel : ViewModel() {
 
-    private val repository = UserRepository(
-        AppDatabase.getDatabase(application).userDao()
-    )
+    private val auth = FirebaseAuth.getInstance()
+    private val firestore = FirebaseFirestore.getInstance()
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState
 
-    fun registrar(nombre: String, apellido1: String, apellido2: String, email: String, password: String, perfil: String) {
+    /**
+     * Registra un nuevo usuario en Firebase Auth y guarda sus datos en Firestore
+     */
+    fun registrar(
+        nombre: String,
+        apellido1: String,
+        apellido2: String,
+        email: String,
+        password: String,
+        perfil: String
+    ) {
         viewModelScope.launch {
+            // Validar email
             if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
                 _authState.value = AuthState.Error("El email no tiene un formato válido")
                 return@launch
             }
+            // Validar contraseña
             if (password.length < 8) {
                 _authState.value = AuthState.Error("La contraseña debe tener al menos 8 caracteres")
                 return@launch
@@ -37,30 +47,82 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 _authState.value = AuthState.Error("La contraseña debe tener al menos un número")
                 return@launch
             }
-            val user = User(
-                nombre = nombre,
-                apellido1 = apellido1,
-                apellido2 = apellido2,
-                email = email,
-                password = password,
-                perfil = perfil
-            )
-            val exito = repository.registrar(user)
-            _authState.value = if (exito) AuthState.Success(user) else AuthState.Error("El email ya está registrado")
+
+            try {
+                _authState.value = AuthState.Loading
+
+                // Crear usuario en Firebase Auth
+                val resultado = auth.createUserWithEmailAndPassword(email, password).await()
+                val uid = resultado.user?.uid ?: throw Exception("Error al obtener UID")
+
+                // Guardar datos extra en Firestore
+                val userData = mapOf(
+                    "uid" to uid,
+                    "nombre" to nombre,
+                    "apellido1" to apellido1,
+                    "apellido2" to apellido2,
+                    "email" to email,
+                    "perfil" to perfil
+                )
+                firestore.collection("usuarios").document(uid).set(userData).await()
+
+                _authState.value = AuthState.Success(
+                    uid = uid,
+                    nombre = nombre,
+                    email = email,
+                    perfil = perfil
+                )
+            } catch (e: Exception) {
+                _authState.value = AuthState.Error(e.message ?: "Error al registrar")
+            }
         }
     }
 
+    /**
+     * Inicia sesión con Firebase Auth y recupera los datos del usuario desde Firestore
+     */
     fun login(email: String, password: String) {
         viewModelScope.launch {
             if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
                 _authState.value = AuthState.Error("El email no tiene un formato válido")
                 return@launch
             }
-            val user = repository.login(email, password)
-            _authState.value = if (user != null) AuthState.Success(user) else AuthState.Error("Email o contraseña incorrectos")
+
+            try {
+                _authState.value = AuthState.Loading
+
+                // Login en Firebase Auth
+                val resultado = auth.signInWithEmailAndPassword(email, password).await()
+                val uid = resultado.user?.uid ?: throw Exception("Error al obtener UID")
+
+                // Recuperar datos del usuario desde Firestore
+                val doc = firestore.collection("usuarios").document(uid).get().await()
+                val nombre = doc.getString("nombre") ?: ""
+                val perfil = doc.getString("perfil") ?: ""
+
+                _authState.value = AuthState.Success(
+                    uid = uid,
+                    nombre = nombre,
+                    email = email,
+                    perfil = perfil
+                )
+            } catch (e: Exception) {
+                _authState.value = AuthState.Error("Email o contraseña incorrectos")
+            }
         }
     }
 
+    /**
+     * Cierra la sesión del usuario actual
+     */
+    fun cerrarSesion() {
+        auth.signOut()
+        _authState.value = AuthState.Idle
+    }
+
+    /**
+     * Resetea el estado a Idle
+     */
     fun reset() {
         _authState.value = AuthState.Idle
     }
@@ -68,6 +130,12 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
 sealed class AuthState {
     object Idle : AuthState()
-    data class Success(val user: User) : AuthState()
+    object Loading : AuthState()
+    data class Success(
+        val uid: String,
+        val nombre: String,
+        val email: String,
+        val perfil: String
+    ) : AuthState()
     data class Error(val mensaje: String) : AuthState()
 }
