@@ -1,5 +1,6 @@
 package com.example.qtengo.login.ui
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
@@ -17,9 +18,6 @@ class AuthViewModel : ViewModel() {
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState
 
-    /**
-     * Registra un nuevo usuario en Firebase Auth y guarda sus datos en Firestore
-     */
     fun registrar(
         nombre: String,
         apellido1: String,
@@ -29,33 +27,15 @@ class AuthViewModel : ViewModel() {
         perfil: String
     ) {
         viewModelScope.launch {
-            // Validar email
-            if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                _authState.value = AuthState.Error("El email no tiene un formato válido")
-                return@launch
-            }
-            // Validar contraseña
-            if (password.length < 8) {
-                _authState.value = AuthState.Error("La contraseña debe tener al menos 8 caracteres")
-                return@launch
-            }
-            if (!password.any { it.isUpperCase() }) {
-                _authState.value = AuthState.Error("La contraseña debe tener al menos una mayúscula")
-                return@launch
-            }
-            if (!password.any { it.isDigit() }) {
-                _authState.value = AuthState.Error("La contraseña debe tener al menos un número")
-                return@launch
-            }
-
             try {
                 _authState.value = AuthState.Loading
+                Log.d("AuthDebug", "Registrando en Auth: $email")
 
-                // Crear usuario en Firebase Auth
+                // 1. Crear usuario en Firebase Auth
                 val resultado = auth.createUserWithEmailAndPassword(email, password).await()
-                val uid = resultado.user?.uid ?: throw Exception("Error al obtener UID")
+                val uid = resultado.user?.uid ?: throw Exception("Error al crear UID")
 
-                // Guardar datos extra en Firestore
+                // 2. Preparar datos para Firestore
                 val userData = mapOf(
                     "uid" to uid,
                     "nombre" to nombre,
@@ -64,65 +44,55 @@ class AuthViewModel : ViewModel() {
                     "email" to email,
                     "perfil" to perfil
                 )
-                firestore.collection("usuarios").document(uid).set(userData).await()
 
-                _authState.value = AuthState.Success(
-                    uid = uid,
-                    nombre = nombre,
-                    email = email,
-                    perfil = perfil
-                )
+                Log.d("AuthDebug", "Guardando perfil en 'usuarios' para UID: $uid")
+                
+                // 3. Guardar en Firestore. 
+                // No usamos await() aquí para el registro inicial si queremos evitar bloqueos,
+                // Firestore lo enviará en segundo plano y la sesión ya es válida.
+                firestore.collection("usuarios").document(uid).set(userData)
+                
+                // 4. Éxito inmediato para navegar
+                _authState.value = AuthState.Success(uid, nombre, email, perfil)
+                Log.d("AuthDebug", "Registro exitoso, navegando...")
+
             } catch (e: Exception) {
-                _authState.value = AuthState.Error(e.message ?: "Error al registrar")
+                Log.e("AuthDebug", "Error en registro: ${e.message}")
+                _authState.value = AuthState.Error(e.message ?: "Error desconocido")
             }
         }
     }
 
-    /**
-     * Inicia sesión con Firebase Auth y recupera los datos del usuario desde Firestore
-     */
     fun login(email: String, password: String) {
         viewModelScope.launch {
-            if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                _authState.value = AuthState.Error("El email no tiene un formato válido")
-                return@launch
-            }
-
             try {
                 _authState.value = AuthState.Loading
-
-                // Login en Firebase Auth
+                Log.d("AuthDebug", "Iniciando sesión: $email")
+                
                 val resultado = auth.signInWithEmailAndPassword(email, password).await()
-                val uid = resultado.user?.uid ?: throw Exception("Error al obtener UID")
+                val uid = resultado.user?.uid ?: throw Exception("UID no encontrado")
 
-                // Recuperar datos del usuario desde Firestore
                 val doc = firestore.collection("usuarios").document(uid).get().await()
                 val nombre = doc.getString("nombre") ?: ""
                 val perfil = doc.getString("perfil") ?: ""
 
-                _authState.value = AuthState.Success(
-                    uid = uid,
-                    nombre = nombre,
-                    email = email,
-                    perfil = perfil
-                )
+                if (perfil.isEmpty()) {
+                    _authState.value = AuthState.Error("El usuario no tiene un perfil asignado.")
+                } else {
+                    _authState.value = AuthState.Success(uid, nombre, email, perfil)
+                }
             } catch (e: Exception) {
+                Log.e("AuthDebug", "Error en login: ${e.message}")
                 _authState.value = AuthState.Error("Email o contraseña incorrectos")
             }
         }
     }
 
-    /**
-     * Cierra la sesión del usuario actual
-     */
     fun cerrarSesion() {
         auth.signOut()
         _authState.value = AuthState.Idle
     }
 
-    /**
-     * Resetea el estado a Idle
-     */
     fun reset() {
         _authState.value = AuthState.Idle
     }
@@ -131,11 +101,6 @@ class AuthViewModel : ViewModel() {
 sealed class AuthState {
     object Idle : AuthState()
     object Loading : AuthState()
-    data class Success(
-        val uid: String,
-        val nombre: String,
-        val email: String,
-        val perfil: String
-    ) : AuthState()
+    data class Success(val uid: String, val nombre: String, val email: String, val perfil: String) : AuthState()
     data class Error(val mensaje: String) : AuthState()
 }

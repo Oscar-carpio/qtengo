@@ -1,4 +1,4 @@
-package com.example.qtengo.pyme.ui
+package com.example.qtengo.pyme.ui.finanzas
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.ViewModel
@@ -12,7 +12,7 @@ import kotlinx.coroutines.launch
 /**
  * ViewModel que gestiona la lógica financiera (ingresos y gastos) del módulo Pyme usando Firebase.
  */
-class FinanceViewModel(
+class FinanzasViewModel(
     private val repository: FinanceRepository = FinanceRepository()
 ) : ViewModel() {
 
@@ -36,7 +36,7 @@ class FinanceViewModel(
     /**
      * Elimina un movimiento financiero existente.
      */
-    fun delete(movement: FinanceMovement) = viewModelScope.launch {
-        repository.delete(movement.id)
+    fun delete(movementId: String) = viewModelScope.launch {
+        repository.delete(movementId)
     }
 }

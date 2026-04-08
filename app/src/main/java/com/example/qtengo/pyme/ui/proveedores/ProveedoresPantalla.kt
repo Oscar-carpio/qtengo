@@ -1,17 +1,17 @@
-package com.example.qtengo.pyme.ui
+package com.example.qtengo.pyme.ui.proveedores
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -28,11 +29,13 @@ import com.example.qtengo.core.ui.components.QtengoTopBar
 
 /**
  * Pantalla para visualizar y gestionar la lista de proveedores en el perfil Pyme.
+ * Incluye buscador y filtros alfabéticos.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SupplierScreen(
+fun ProveedoresPantalla(
     profile: String = "PYME",
-    viewModel: SupplierViewModel = viewModel(),
+    viewModel: ProveedoresViewModel = viewModel(),
     onBack: () -> Unit,
     onLogout: () -> Unit,
     onChangeProfile: () -> Unit
@@ -40,6 +43,18 @@ fun SupplierScreen(
     val suppliers by viewModel.suppliers.observeAsState(emptyList())
     var showAddDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    
+    var searchQuery by remember { mutableStateOf("") }
+    var sortByAlphabetical by remember { mutableStateOf(true) }
+    var filtersExpanded by remember { mutableStateOf(false) }
+
+    val filteredSuppliers = suppliers.filter {
+        it.name.contains(searchQuery, ignoreCase = true) || 
+        it.category.contains(searchQuery, ignoreCase = true)
+    }.let { list ->
+        if (sortByAlphabetical) list.sortedBy { it.name }
+        else list
+    }
 
     LaunchedEffect(profile) {
         viewModel.loadProfile(profile)
@@ -57,9 +72,55 @@ fun SupplierScreen(
             onChangeProfile = onChangeProfile
         )
 
-        if (suppliers.isEmpty()) {
+        // Buscador y Filtros
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().clickable { filtersExpanded = !filtersExpanded },
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Search, null, tint = Color(0xFF1A3A6B))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Buscador de Proveedores", fontWeight = FontWeight.Bold, color = Color(0xFF1A3A6B))
+                    }
+                    Icon(if (filtersExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown, null)
+                }
+
+                AnimatedVisibility(visible = filtersExpanded) {
+                    Column(modifier = Modifier.padding(top = 12.dp)) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            label = { Text("Nombre o categoría...") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { searchQuery = "" }) {
+                                        Icon(Icons.Default.Close, null)
+                                    }
+                                }
+                            }
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = sortByAlphabetical, onCheckedChange = { sortByAlphabetical = it })
+                            Text("Orden Alfabético (A-Z)", fontSize = 14.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        if (filteredSuppliers.isEmpty()) {
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Text("No hay proveedores registrados", color = Color.Gray)
+                Text(if (searchQuery.isEmpty()) "No hay proveedores registrados" else "Sin resultados", color = Color.Gray)
             }
         } else {
             LazyColumn(
@@ -67,8 +128,8 @@ fun SupplierScreen(
                 contentPadding = PaddingValues(vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(suppliers) { supplier ->
-                    SupplierCard(
+                items(filteredSuppliers) { supplier ->
+                    SupplierCardItem(
                         supplier = supplier,
                         onCall = {
                             val intent = Intent(Intent.ACTION_DIAL).apply {
@@ -93,14 +154,14 @@ fun SupplierScreen(
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A3A6B))
         ) {
-            Icon(Icons.Default.Add, contentDescription = null)
+            Icon(Icons.Default.Add, null)
             Spacer(Modifier.width(8.dp))
             Text("Nuevo Proveedor")
         }
     }
 
     if (showAddDialog) {
-        AddSupplierDialog(
+        DialogoAnadirProveedor(
             onDismiss = { showAddDialog = false },
             onConfirm = { name, contact, phone, email, cat ->
                 viewModel.insert(name, contact, phone, email, cat)
@@ -111,7 +172,7 @@ fun SupplierScreen(
 }
 
 @Composable
-fun SupplierCard(supplier: Supplier, onCall: () -> Unit, onEmail: () -> Unit) {
+fun SupplierCardItem(supplier: Supplier, onCall: () -> Unit, onEmail: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
@@ -152,7 +213,7 @@ fun SupplierCard(supplier: Supplier, onCall: () -> Unit, onEmail: () -> Unit) {
                     modifier = Modifier.clickable { onCall() }.padding(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Call, contentDescription = "Llamar", modifier = Modifier.size(18.dp), tint = Color(0xFF1565C0))
+                    Icon(Icons.Default.Call, null, modifier = Modifier.size(18.dp), tint = Color(0xFF1565C0))
                     Text(" ${supplier.phone}", fontSize = 13.sp, color = Color(0xFF1565C0))
                 }
                 Spacer(Modifier.width(20.dp))
@@ -160,7 +221,7 @@ fun SupplierCard(supplier: Supplier, onCall: () -> Unit, onEmail: () -> Unit) {
                     modifier = Modifier.clickable { onEmail() }.padding(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Email, contentDescription = "Enviar email", modifier = Modifier.size(18.dp), tint = Color(0xFF1565C0))
+                    Icon(Icons.Default.Email, null, modifier = Modifier.size(18.dp), tint = Color(0xFF1565C0))
                     Text(" Email", fontSize = 13.sp, color = Color(0xFF1565C0))
                 }
             }
@@ -168,9 +229,8 @@ fun SupplierCard(supplier: Supplier, onCall: () -> Unit, onEmail: () -> Unit) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddSupplierDialog(onDismiss: () -> Unit, onConfirm: (String, String, String, String, String) -> Unit) {
+fun DialogoAnadirProveedor(onDismiss: () -> Unit, onConfirm: (String, String, String, String, String) -> Unit) {
     var name by remember { mutableStateOf("") }
     var contact by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
@@ -184,19 +244,14 @@ fun AddSupplierDialog(onDismiss: () -> Unit, onConfirm: (String, String, String,
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nombre Empresa") })
                 OutlinedTextField(value = contact, onValueChange = { contact = it }, label = { Text("Contacto") })
-                OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Teléfono") })
-                OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") })
+                OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Teléfono") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
+                OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
                 OutlinedTextField(value = category, onValueChange = { category = it }, label = { Text("Categoría") })
             }
         },
         confirmButton = {
-            Button(
-                onClick = { if(name.isNotEmpty()) onConfirm(name, contact, phone, email, category) },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A3A6B))
-            ) { Text("Guardar") }
+            Button(onClick = { if(name.isNotEmpty()) onConfirm(name, contact, phone, email, category) }) { Text("Guardar") }
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
-        }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
     )
 }

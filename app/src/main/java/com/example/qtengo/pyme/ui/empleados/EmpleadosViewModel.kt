@@ -1,4 +1,4 @@
-package com.example.qtengo.pyme.ui
+package com.example.qtengo.pyme.ui.empleados
 
 import androidx.lifecycle.*
 import com.example.qtengo.core.domain.models.Employee
@@ -8,7 +8,7 @@ import kotlinx.coroutines.launch
 /**
  * ViewModel para gestionar la lógica de la plantilla de empleados en el módulo Pyme usando Firebase.
  */
-class EmployeeViewModel : ViewModel() {
+class EmpleadosViewModel : ViewModel() {
 
     private val repository = EmployeeRepository()
     private val profileFilter = MutableLiveData<String>()
@@ -46,7 +46,7 @@ class EmployeeViewModel : ViewModel() {
     /**
      * Elimina a un empleado de la base de datos.
      */
-    fun delete(employee: Employee) = viewModelScope.launch {
-        repository.delete(employee.id)
+    fun delete(employeeId: String) = viewModelScope.launch {
+        repository.delete(employeeId)
     }
 }

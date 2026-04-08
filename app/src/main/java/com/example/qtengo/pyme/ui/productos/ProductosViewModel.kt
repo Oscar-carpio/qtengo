@@ -1,4 +1,4 @@
-package com.example.qtengo.pyme.ui
+package com.example.qtengo.pyme.ui.productos
 
 import androidx.lifecycle.*
 import com.example.qtengo.core.domain.models.Product
@@ -14,7 +14,7 @@ import java.util.*
 /**
  * ViewModel encargado de la lógica de negocio para la gestión de productos y stock en el módulo Pyme usando Firebase.
  */
-class ProductViewModel : ViewModel() {
+class ProductosViewModel : ViewModel() {
 
     private val repository = ProductRepository()
     private val stockMovementRepository = StockMovementRepository()

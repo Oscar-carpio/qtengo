@@ -23,13 +23,14 @@ import com.example.qtengo.familiar.ui.inventario.InventarioScreen
 import com.example.qtengo.familiar.ui.inventario.AddInventarioScreen
 import com.example.qtengo.familiar.ui.tareas.TareasScreen
 
-import com.example.qtengo.pyme.ui.PymeHomeScreen
+import com.example.qtengo.pyme.ui.inicio.PymeInicioPantalla
+import com.example.qtengo.pyme.ui.finanzas.FinanzasPantalla
+import com.example.qtengo.pyme.ui.empleados.EmpleadosPantalla
+import com.example.qtengo.pyme.ui.proveedores.ProveedoresPantalla
+import com.example.qtengo.pyme.ui.productos.ProductosPantalla
+import com.example.qtengo.pyme.ui.tareas.TareasPantalla
+
 import com.example.qtengo.restauracion.ui.RestauracionHomeScreen
-import com.example.qtengo.pyme.ui.PymeFinanceScreen
-import com.example.qtengo.pyme.ui.EmployeeScreen
-import com.example.qtengo.pyme.ui.SupplierScreen
-import com.example.qtengo.pyme.ui.ProductScreen
-import com.example.qtengo.pyme.ui.TaskScreen
 import com.example.qtengo.core.ui.screens.SplashScreen
 import com.example.qtengo.core.ui.theme.QtengoTheme
 import com.google.firebase.auth.FirebaseAuth
@@ -187,35 +188,35 @@ class MainActivity : ComponentActivity() {
                     // --- PERFIL PYME ---
                     perfil == "Pyme" -> {
                         when (currentScreen) {
-                            "" -> PymeHomeScreen(
+                            "" -> PymeInicioPantalla(
                                 onMenuSelected = { currentScreen = it },
                                 onLogout = { cerrarSesion() },
                                 onChangeProfile = { /* TODO */ }
                             )
-                            "Productos / Stock" -> ProductScreen(
+                            "Productos / Stock" -> ProductosPantalla(
                                 profile = "PYME",
                                 onBack = { currentScreen = "" },
                                 onLogout = { cerrarSesion() },
                                 onChangeProfile = { /* TODO */ }
                             )
-                            "Gastos e ingresos" -> PymeFinanceScreen(
+                            "Gastos e ingresos" -> FinanzasPantalla(
                                 onBack = { currentScreen = "" },
                                 onLogout = { cerrarSesion() },
                                 onChangeProfile = { /* TODO */ }
                             )
-                            "Proveedores" -> SupplierScreen(
+                            "Proveedores" -> ProveedoresPantalla(
                                 profile = "PYME",
                                 onBack = { currentScreen = "" },
                                 onLogout = { cerrarSesion() },
                                 onChangeProfile = { /* TODO */ }
                             )
-                            "Empleados" -> EmployeeScreen(
+                            "Empleados" -> EmpleadosPantalla(
                                 profile = "PYME",
                                 onBack = { currentScreen = "" },
                                 onLogout = { cerrarSesion() },
                                 onChangeProfile = { /* TODO */ }
                             )
-                            "Agenda de Tareas" -> TaskScreen(
+                            "Agenda de Tareas" -> TareasPantalla(
                                 onBack = { currentScreen = "" },
                                 onLogout = { cerrarSesion() },
                                 onChangeProfile = { /* TODO */ }
@@ -232,13 +233,13 @@ class MainActivity : ComponentActivity() {
                                 onLogout = { cerrarSesion() },
                                 onChangeProfile = { /* TODO */ }
                             )
-                            "Stock de cocina" -> ProductScreen(
+                            "Stock de cocina" -> ProductosPantalla(
                                 profile = "Restauración",
                                 onBack = { currentScreen = "" },
                                 onLogout = { cerrarSesion() },
                                 onChangeProfile = { /* TODO */ }
                             )
-                            "Proveedores" -> SupplierScreen(
+                            "Proveedores" -> ProveedoresPantalla(
                                 profile = "Restauración",
                                 onBack = { currentScreen = "" },
                                 onLogout = { cerrarSesion() },
