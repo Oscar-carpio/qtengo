@@ -1,0 +1,5 @@
+He modificado el login para que se quede la sesión iniciada con el modulo correspondiente, además de añadir en la interfaz que se pueda cerrar la sesión y cambiar de modulo.
+He cambiado totalmente la estructura, por un sistema modular que nos va a ayudar a que se puedan modificar mejor el proyecto, revisad vuestros apartados/módulos y también el archivo de "ESTADO_PROYECTO" antes de seguir modificando. 
+Recomiendo encarecidamente de que pongáis comentarios en los métodos.
+Disculpad si he eliminado algo importante. Por mi parte he finalizado el modulo PYME (a excepción de pequeñas/futuras mejoras).
+Atentamente Fran. :D

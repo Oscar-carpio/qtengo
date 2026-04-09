@@ -4,38 +4,140 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import com.example.qtengo.ui.screens.*
-import com.example.qtengo.ui.theme.QtengoTheme
-import com.example.qtengo.ui.products.ProductScreen
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import com.example.qtengo.login.ui.LoginScreen
+import com.example.qtengo.login.ui.RegisterScreen
+import com.example.qtengo.familiar.ui.FamiliarHomeScreen
+import com.example.qtengo.familiar.ui.compra.ShoppingListScreen
+import com.example.qtengo.familiar.ui.compra.ShoppingListDetailScreen
+import com.example.qtengo.familiar.ui.compra.ShoppingList
+import com.example.qtengo.familiar.ui.gastos.GastosScreen
+import com.example.qtengo.familiar.ui.gastos.AddGastoScreen
+import com.example.qtengo.familiar.ui.inventario.InventarioScreen
+import com.example.qtengo.familiar.ui.inventario.AddInventarioScreen
+import com.example.qtengo.familiar.ui.tareas.TareasScreen
 
+import com.example.qtengo.pyme.ui.inicio.PymeInicioPantalla
+import com.example.qtengo.pyme.ui.finanzas.FinanzasPantalla
+import com.example.qtengo.pyme.ui.empleados.EmpleadosPantalla
+import com.example.qtengo.pyme.ui.proveedores.ProveedoresPantalla
+import com.example.qtengo.pyme.ui.productos.ProductosPantalla
+import com.example.qtengo.pyme.ui.tareas.TareasPantalla
+
+import com.example.qtengo.restauracion.ui.RestauracionHomeScreen
+import com.example.qtengo.core.ui.screens.SplashScreen
+import com.example.qtengo.core.ui.theme.QtengoTheme
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
+
+/**
+ * Actividad principal que gestiona la navegación de la aplicación Q-Tengo.
+ * Organizada por perfiles: Familiar, Pyme y Restauración.
+ * Autenticación y sesión gestionadas por Firebase Auth.
+ */
 class MainActivity : ComponentActivity() {
+
+    private val auth = FirebaseAuth.getInstance()
+    private val firestore = FirebaseFirestore.getInstance()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
         setContent {
             QtengoTheme {
                 var showSplash by remember { mutableStateOf(true) }
-                var selectedProfile by remember { mutableStateOf("") }
+                var uid by remember { mutableStateOf<String?>(null) }
+                var perfil by remember { mutableStateOf<String?>(null) }
+                var mostrarRegistro by remember { mutableStateOf(false) }
                 var currentScreen by remember { mutableStateOf("") }
                 val selectedShoppingList = remember { mutableStateOf<ShoppingList?>(null) }
                 var showAddGasto by remember { mutableStateOf(false) }
                 var showAddInventario by remember { mutableStateOf(false) }
 
+                // Comprobar sesión activa en Firebase Auth al arrancar
+                LaunchedEffect(Unit) {
+                    val currentUser = auth.currentUser
+                    if (currentUser != null) {
+                        try {
+                            val doc = firestore.collection("usuarios")
+                                .document(currentUser.uid)
+                                .get()
+                                .await()
+                            val perfilRecuperado = doc.getString("perfil")
+
+                            if (perfilRecuperado != null) {
+                                // ✅ Perfil encontrado, continuar sesión
+                                uid = currentUser.uid
+                                perfil = perfilRecuperado
+                            } else {
+                                // ❌ Documento sin perfil, forzar login
+                                auth.signOut()
+                            }
+                        } catch (e: Exception) {
+                            // ❌ Error de red, forzar login
+                            auth.signOut()
+                        }
+                    }
+                    showSplash = false
+                }
+
+                /**
+                 * Cierra la sesión del usuario y vuelve al login
+                 */
+                fun cerrarSesion() {
+                    auth.signOut()
+                    uid = null
+                    perfil = null
+                    currentScreen = ""
+                }
+
                 when {
                     showSplash -> SplashScreen(
                         onSplashFinished = { showSplash = false }
                     )
-                    selectedProfile.isEmpty() -> ProfileScreen(
-                        onProfileSelected = { selectedProfile = it }
+
+                    uid == null && mostrarRegistro -> RegisterScreen(
+                        onRegistroExitoso = { nuevoUid, nuevoPerfil ->
+                            uid = nuevoUid
+                            perfil = nuevoPerfil
+                            mostrarRegistro = false
+                        },
+                        onIrALogin = { mostrarRegistro = false }
                     )
-                    
-                    // PERFIL FAMILIAR
-                    selectedProfile == "Familiar" -> {
+
+                    uid == null -> LoginScreen(
+                        onLoginExitoso = { nuevoUid, nuevoPerfil ->
+                            uid = nuevoUid
+                            perfil = nuevoPerfil
+                        },
+                        onIrARegistro = { mostrarRegistro = true }
+                    )
+
+                    // Mientras carga el perfil desde Firestore
+                    perfil == null -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+
+                    // --- PERFIL FAMILIAR ---
+                    perfil == "Familiar" -> {
                         when (currentScreen) {
                             "" -> FamiliarHomeScreen(
                                 onMenuSelected = { currentScreen = it },
-                                onBack = { selectedProfile = "" }
+                                onLogout = { cerrarSesion() },
+                                onChangeProfile = { /* TODO */ }
                             )
                             "Lista de la compra" -> {
                                 if (selectedShoppingList.value == null) {
@@ -53,7 +155,6 @@ class MainActivity : ComponentActivity() {
                             "Control de gastos" -> {
                                 if (!showAddGasto) {
                                     GastosScreen(
-                                        profile = "FAMILIA",
                                         onAddGasto = { showAddGasto = true },
                                         onBack = { currentScreen = "" }
                                     )
@@ -77,50 +178,84 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             }
-                        }
-                    }
-
-                    // PERFIL PYME
-                    selectedProfile == "Pyme" -> {
-                        when (currentScreen) {
-                            "" -> PymeHomeScreen(
-                                onMenuSelected = { currentScreen = it },
-                                onBack = { selectedProfile = "" }
-                            )
-                            "Productos / Stock" -> ProductScreen(
-                                profile = "PYME",
+                            "Tareas y recordatorios" -> TareasScreen(
                                 onBack = { currentScreen = "" }
                             )
-                            else -> PymeHomeScreen(
-                                onMenuSelected = { currentScreen = it },
-                                onBack = { selectedProfile = "" }
-                            )
+                            else -> currentScreen = ""
                         }
                     }
 
-                    // PERFIL RESTAURACIÓN
-                    selectedProfile == "Restauración" -> {
+                    // --- PERFIL PYME ---
+                    perfil == "Pyme" -> {
+                        when (currentScreen) {
+                            "" -> PymeInicioPantalla(
+                                onMenuSelected = { currentScreen = it },
+                                onLogout = { cerrarSesion() },
+                                onChangeProfile = { /* TODO */ }
+                            )
+                            "Productos / Stock" -> ProductosPantalla(
+                                profile = "PYME",
+                                onBack = { currentScreen = "" },
+                                onLogout = { cerrarSesion() },
+                                onChangeProfile = { /* TODO */ }
+                            )
+                            "Gastos e ingresos" -> FinanzasPantalla(
+                                onBack = { currentScreen = "" },
+                                onLogout = { cerrarSesion() },
+                                onChangeProfile = { /* TODO */ }
+                            )
+                            "Proveedores" -> ProveedoresPantalla(
+                                profile = "PYME",
+                                onBack = { currentScreen = "" },
+                                onLogout = { cerrarSesion() },
+                                onChangeProfile = { /* TODO */ }
+                            )
+                            "Empleados" -> EmpleadosPantalla(
+                                profile = "PYME",
+                                onBack = { currentScreen = "" },
+                                onLogout = { cerrarSesion() },
+                                onChangeProfile = { /* TODO */ }
+                            )
+                            "Agenda de Tareas" -> TareasPantalla(
+                                onBack = { currentScreen = "" },
+                                onLogout = { cerrarSesion() },
+                                onChangeProfile = { /* TODO */ }
+                            )
+                            else -> currentScreen = ""
+                        }
+                    }
+
+                    // --- PERFIL RESTAURACIÓN ---
+                    perfil == "Restauración" -> {
                         when (currentScreen) {
                             "" -> RestauracionHomeScreen(
                                 onMenuSelected = { currentScreen = it },
-                                onBack = { selectedProfile = "" }
+                                onLogout = { cerrarSesion() },
+                                onChangeProfile = { /* TODO */ }
                             )
-                            "Stock de cocina" -> ProductScreen(
-                                profile = "HOSTELERIA",
-                                onBack = { currentScreen = "" }
+                            "Stock de cocina" -> ProductosPantalla(
+                                profile = "Restauración",
+                                onBack = { currentScreen = "" },
+                                onLogout = { cerrarSesion() },
+                                onChangeProfile = { /* TODO */ }
                             )
-                            "Carta / Menú del día" -> DishScreen(
-                                profile = "HOSTELERIA",
-                                onBack = { currentScreen = "" }
+                            "Proveedores" -> ProveedoresPantalla(
+                                profile = "Restauración",
+                                onBack = { currentScreen = "" },
+                                onLogout = { cerrarSesion() },
+                                onChangeProfile = { /* TODO */ }
                             )
-                            "Proveedores" -> SupplierScreen(
-                                profile = "HOSTELERIA",
-                                onBack = { currentScreen = "" }
-                            )
-                            else -> RestauracionHomeScreen(
-                                onMenuSelected = { currentScreen = it },
-                                onBack = { selectedProfile = "" }
-                            )
+                            else -> currentScreen = ""
+                        }
+                    }
+
+                    // Perfil no reconocido
+                    else -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("Perfil no reconocido: $perfil")
                         }
                     }
                 }
