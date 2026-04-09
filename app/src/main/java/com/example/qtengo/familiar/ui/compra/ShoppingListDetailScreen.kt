@@ -5,15 +5,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -27,60 +24,42 @@ fun ShoppingListDetailScreen(
     gastosViewModel: GastosViewModel = viewModel()
 ) {
     var showDialog by remember { mutableStateOf(false) }
-    var newItemName by remember { mutableStateOf("") }
-    var newItemQuantity by remember { mutableStateOf("") }
     var showGastoDialog by remember { mutableStateOf(false) }
+    var showFavoritosDialog by remember { mutableStateOf(false) }
     var gastoTotal by remember { mutableStateOf("") }
 
     val items by viewModel.items.collectAsState()
+    val favoritos by viewModel.favoritos.collectAsState()
     val listaCompleta = items.isNotEmpty() && items.all { it.isChecked }
+    val precioTotal = items.sumOf { it.price.toDoubleOrNull() ?: 0.0 }
 
     LaunchedEffect(shoppingList.id) {
         viewModel.cargarItems(shoppingList.id)
+        viewModel.cargarFavoritos()
     }
 
     // Diálogo añadir producto
     if (showDialog) {
-        AlertDialog(
-            onDismissRequest = {
+        NuevoItemDialog(
+            onConfirm = { nombre, cantidad, precio ->
+                viewModel.añadirItem(shoppingList.id, nombre, cantidad, precio)
                 showDialog = false
-                newItemName = ""
-                newItemQuantity = ""
             },
-            title = { Text("Añadir producto") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = newItemName,
-                        onValueChange = { newItemName = it },
-                        label = { Text("Nombre del producto") },
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = newItemQuantity,
-                        onValueChange = { newItemQuantity = it },
-                        label = { Text("Cantidad (ej: 2 litros)") },
-                        singleLine = true
-                    )
-                }
+            onDismiss = { showDialog = false }
+        )
+    }
+
+    // Diálogo favoritos
+    if (showFavoritosDialog) {
+        FavoritosDialog(
+            favoritos = favoritos,
+            onAñadir = { favorito ->
+                viewModel.añadirFavoritoALista(shoppingList.id, favorito)
             },
-            confirmButton = {
-                TextButton(onClick = {
-                    if (newItemName.isNotBlank()) {
-                        viewModel.añadirItem(shoppingList.id, newItemName, newItemQuantity)
-                        newItemName = ""
-                        newItemQuantity = ""
-                        showDialog = false
-                    }
-                }) { Text("Añadir") }
+            onEliminar = { favoritoId ->
+                viewModel.eliminarFavorito(favoritoId)
             },
-            dismissButton = {
-                TextButton(onClick = {
-                    showDialog = false
-                    newItemName = ""
-                    newItemQuantity = ""
-                }) { Text("Cancelar") }
-            }
+            onDismiss = { showFavoritosDialog = false }
         )
     }
 
@@ -160,6 +139,11 @@ fun ShoppingListDetailScreen(
                     fontSize = 13.sp,
                     color = Color.White.copy(alpha = 0.7f)
                 )
+                Text(
+                    text = "Total: ${"%.2f".format(precioTotal)} €",
+                    fontSize = 13.sp,
+                    color = Color.White.copy(alpha = 0.7f)
+                )
             }
         }
 
@@ -215,61 +199,53 @@ fun ShoppingListDetailScreen(
             }
         }
 
+        // Lista de productos
         LazyColumn(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.weight(1f)
         ) {
             items(items) { item ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (item.isChecked) Color(0xFFE3F2FD) else Color.White
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(
-                            checked = item.isChecked,
-                            onCheckedChange = { checked ->
-                                viewModel.toggleItem(shoppingList.id, item.id, checked)
-                            },
-                            colors = CheckboxDefaults.colors(checkedColor = Color(0xFF1A3A6B))
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = item.name,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = if (item.isChecked) Color.Gray else Color(0xFF1A3A6B),
-                                textDecoration = if (item.isChecked) TextDecoration.LineThrough else TextDecoration.None
-                            )
-                            Text(text = item.quantity, fontSize = 12.sp, color = Color.Gray)
-                        }
-                        IconButton(onClick = { viewModel.eliminarItem(shoppingList.id, item.id) }) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "Eliminar producto",
-                                tint = Color(0xFF1A3A6B)
-                            )
-                        }
+                ShoppingItemCard(
+                    item = item,
+                    esFavorito = favoritos.any { it.name == item.name }, // 👈 compara por nombre
+                    onToggle = { checked ->
+                        viewModel.toggleItem(shoppingList.id, item.id, checked)
+                    },
+                    onDelete = {
+                        viewModel.eliminarItem(shoppingList.id, item.id)
+                    },
+                    onEdit = { nombre, cantidad, precio ->
+                        viewModel.editarItem(shoppingList.id, item.id, nombre, cantidad, precio)
+                    },
+                    onFavorito = {
+                        viewModel.guardarFavorito(item.name, item.quantity, item.price)
                     }
-                }
+                )
             }
         }
 
+        // Botón ver favoritos
+        Button(
+            onClick = { showFavoritosDialog = true },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935))
+        ) {
+            Text(text = "⭐ Ver favoritos", fontSize = 16.sp, modifier = Modifier.padding(8.dp))
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Botón añadir producto
         Button(
             onClick = { showDialog = true },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 16.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A3A6B))
         ) {

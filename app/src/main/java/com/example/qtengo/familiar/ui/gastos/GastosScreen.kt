@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,6 +18,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GastosScreen(
     onAddGasto: () -> Unit,
@@ -23,16 +26,28 @@ fun GastosScreen(
     viewModel: GastosViewModel = viewModel()
 ) {
     val gastos by viewModel.gastos.collectAsState()
+    val gastosFiltrados by viewModel.gastosFiltrados.collectAsState()
     val presupuesto by viewModel.presupuesto.collectAsState()
     val gastosRecurrentes by viewModel.gastosRecurrentes.collectAsState()
+    val fechaInicio by viewModel.fechaInicio.collectAsState()
+    val fechaFin by viewModel.fechaFin.collectAsState()
+
+    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
 
     var showPresupuestoDialog by remember { mutableStateOf(false) }
     var presupuestoInput by remember { mutableStateOf("") }
     var gastoAEditar by remember { mutableStateOf<Gasto?>(null) }
     var recurrenteAEditar by remember { mutableStateOf<GastoRecurrente?>(null) }
     var showAddRecurrenteDialog by remember { mutableStateOf(false) }
+    var showFiltroDialog by remember { mutableStateOf(false) }
 
-    // Totales reactivos donde se calculan directamente de los estados reactivos de firebase
+    // DatePicker states
+    val datePickerStateInicio = rememberDatePickerState()
+    val datePickerStateFin = rememberDatePickerState()
+    var showDatePickerInicio by remember { mutableStateOf(false) }
+    var showDatePickerFin by remember { mutableStateOf(false) }
+
+    // Totales reactivos
     val mesActual = remember {
         SimpleDateFormat("MM/yyyy", Locale.getDefault()).format(Date())
     }
@@ -41,10 +56,110 @@ fun GastosScreen(
         .sumOf { it.cantidad }
     val totalRecurrentes = gastosRecurrentes.sumOf { it.cantidad }
 
+    val hayFiltroActivo = fechaInicio != null || fechaFin != null
+
     LaunchedEffect(Unit) {
         viewModel.cargarGastos()
         viewModel.cargarPresupuesto()
         viewModel.cargarGastosRecurrentes()
+    }
+
+    // DatePicker inicio
+    if (showDatePickerInicio) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePickerInicio = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerStateInicio.selectedDateMillis?.let {
+                        val cal = Calendar.getInstance().apply { timeInMillis = it }
+                        viewModel.filtrarPorFechas(cal.time, fechaFin)
+                    }
+                    showDatePickerInicio = false
+                }) { Text("Aceptar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePickerInicio = false }) { Text("Cancelar") }
+            }
+        ) {
+            DatePicker(state = datePickerStateInicio)
+        }
+    }
+
+    // DatePicker fin
+    if (showDatePickerFin) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePickerFin = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerStateFin.selectedDateMillis?.let {
+                        val cal = Calendar.getInstance().apply {
+                            timeInMillis = it
+                            set(Calendar.HOUR_OF_DAY, 23)
+                            set(Calendar.MINUTE, 59)
+                            set(Calendar.SECOND, 59)
+                        }
+                        viewModel.filtrarPorFechas(fechaInicio, cal.time)
+                    }
+                    showDatePickerFin = false
+                }) { Text("Aceptar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePickerFin = false }) { Text("Cancelar") }
+            }
+        ) {
+            DatePicker(state = datePickerStateFin)
+        }
+    }
+
+    // Diálogo filtro por fechas
+    if (showFiltroDialog) {
+        AlertDialog(
+            onDismissRequest = { showFiltroDialog = false },
+            title = { Text("Filtrar por fechas") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Fecha inicio
+                    OutlinedButton(
+                        onClick = { showDatePickerInicio = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.DateRange, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (fechaInicio != null) "Desde: ${sdf.format(fechaInicio!!)}"
+                            else "Seleccionar fecha inicio"
+                        )
+                    }
+                    // Fecha fin
+                    OutlinedButton(
+                        onClick = { showDatePickerFin = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.DateRange, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (fechaFin != null) "Hasta: ${sdf.format(fechaFin!!)}"
+                            else "Seleccionar fecha fin"
+                        )
+                    }
+                    // Botón limpiar filtro
+                    if (hayFiltroActivo) {
+                        TextButton(
+                            onClick = {
+                                viewModel.limpiarFiltro()
+                                showFiltroDialog = false
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Limpiar filtro", color = Color.Red)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showFiltroDialog = false }) { Text("Cerrar") }
+            }
+        )
     }
 
     // Diálogo presupuesto
@@ -140,6 +255,46 @@ fun GastosScreen(
                 color = Color.White,
                 modifier = Modifier.align(Alignment.Center)
             )
+            // Botón filtro en el header
+            IconButton(
+                onClick = { showFiltroDialog = true },
+                modifier = Modifier.align(Alignment.CenterEnd)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.DateRange,
+                    contentDescription = "Filtrar por fechas",
+                    tint = if (hayFiltroActivo) Color(0xFFFFC107) else Color.White
+                )
+            }
+        }
+
+        // Banner filtro activo
+        if (hayFiltroActivo) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(12.dp)
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Filtro: ${if (fechaInicio != null) sdf.format(fechaInicio!!) else "..."} → ${if (fechaFin != null) sdf.format(fechaFin!!) else "..."}",
+                        fontSize = 13.sp,
+                        color = Color(0xFF1A3A6B),
+                        fontWeight = FontWeight.Medium
+                    )
+                    TextButton(onClick = { viewModel.limpiarFiltro() }) {
+                        Text("Limpiar", color = Color.Red, fontSize = 12.sp)
+                    }
+                }
+            }
         }
 
         LazyColumn(
@@ -168,8 +323,9 @@ fun GastosScreen(
             }
 
             item {
+                // Usar gastosFiltrados en lugar de gastos
                 GastosPuntualesSection(
-                    gastos = gastos,
+                    gastos = gastosFiltrados,
                     onEdit = { gastoAEditar = it },
                     onDelete = { viewModel.eliminarGasto(it) }
                 )

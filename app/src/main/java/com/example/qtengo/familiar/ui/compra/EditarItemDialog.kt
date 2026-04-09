@@ -7,23 +7,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
 
 @Composable
-fun NuevoItemDialog(
+fun EditarItemDialog(
+    item: ShoppingItem,
     onConfirm: (String, String, String) -> Unit, // nombre, cantidad, precio
     onDismiss: () -> Unit
 ) {
-    var nombre by remember { mutableStateOf("") }
-    var cantidad by remember { mutableStateOf("") }
-    var precio by remember { mutableStateOf("") }
+    var nombre by remember { mutableStateOf(item.name) }
+    var cantidad by remember { mutableStateOf(item.quantity) }
+    var precio by remember { mutableStateOf(item.price) }
     var errorCantidad by remember { mutableStateOf(false) }
     var errorPrecio by remember { mutableStateOf(false) }
 
     AlertDialog(
-        onDismissRequest = {
-            onDismiss()
-            nombre = ""; cantidad = ""; precio = ""
-            errorCantidad = false; errorPrecio = false
-        },
-        title = { Text("Añadir producto") },
+        onDismissRequest = { onDismiss() },
+        title = { Text("Editar producto") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 // Nombre
@@ -69,17 +66,11 @@ fun NuevoItemDialog(
                 val precioValido = precio.toDoubleOrNull()?.let { it >= 0 } ?: true
                 if (nombre.isNotBlank() && cantidadValida && precioValido) {
                     onConfirm(nombre, cantidad, precio)
-                    nombre = ""; cantidad = ""; precio = ""
-                    errorCantidad = false; errorPrecio = false
                 }
-            }) { Text("Añadir") }
+            }) { Text("Guardar") }
         },
         dismissButton = {
-            TextButton(onClick = {
-                onDismiss()
-                nombre = ""; cantidad = ""; precio = ""
-                errorCantidad = false; errorPrecio = false
-            }) { Text("Cancelar") }
+            TextButton(onClick = { onDismiss() }) { Text("Cancelar") }
         }
     )
 }

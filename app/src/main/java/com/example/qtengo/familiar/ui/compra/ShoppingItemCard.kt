@@ -4,7 +4,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,9 +21,25 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun ShoppingItemCard(
     item: ShoppingItem,
+    esFavorito: Boolean,                          // 👈 nuevo parámetro
     onToggle: (Boolean) -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onEdit: (String, String, String) -> Unit,
+    onFavorito: () -> Unit
 ) {
+    var showEditDialog by remember { mutableStateOf(false) }
+
+    if (showEditDialog) {
+        EditarItemDialog(
+            item = item,
+            onConfirm = { nombre, cantidad, precio ->
+                onEdit(nombre, cantidad, precio)
+                showEditDialog = false
+            },
+            onDismiss = { showEditDialog = false }
+        )
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
@@ -56,8 +75,28 @@ fun ShoppingItemCard(
                     color = if (item.isChecked) Color.Gray else Color(0xFF1A3A6B),
                     textDecoration = if (item.isChecked) TextDecoration.LineThrough else TextDecoration.None
                 )
-                Text(text = item.quantity, fontSize = 12.sp, color = Color.Gray)
+                Text(text = "Cantidad: ${item.quantity}", fontSize = 12.sp, color = Color.Gray)
+                if (item.price.isNotBlank()) {
+                    Text(text = "Precio: ${item.price} €", fontSize = 12.sp, color = Color.Gray)
+                }
             }
+            // Botón favorito — icono relleno si es favorito, vacío si no lo es
+            IconButton(onClick = onFavorito) {
+                Icon(
+                    imageVector = if (esFavorito) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
+                    contentDescription = if (esFavorito) "Quitar de favoritos" else "Guardar como favorito",
+                    tint = if (esFavorito) Color(0xFFE53935) else Color.Gray
+                )
+            }
+            // Botón editar
+            IconButton(onClick = { showEditDialog = true }) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "Editar producto",
+                    tint = Color(0xFF1A3A6B)
+                )
+            }
+            // Botón eliminar
             IconButton(onClick = onDelete) {
                 Icon(
                     imageVector = Icons.Default.Delete,

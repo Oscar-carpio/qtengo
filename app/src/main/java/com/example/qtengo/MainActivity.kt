@@ -1,9 +1,14 @@
 package com.example.qtengo
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -11,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.core.content.ContextCompat
 import com.example.qtengo.login.ui.LoginScreen
 import com.example.qtengo.login.ui.RegisterScreen
 import com.example.qtengo.familiar.ui.FamiliarHomeScreen
@@ -22,7 +28,6 @@ import com.example.qtengo.familiar.ui.gastos.AddGastoScreen
 import com.example.qtengo.familiar.ui.inventario.InventarioScreen
 import com.example.qtengo.familiar.ui.inventario.AddInventarioScreen
 import com.example.qtengo.familiar.ui.tareas.TareasScreen
-
 import com.example.qtengo.pyme.ui.PymeHomeScreen
 import com.example.qtengo.restauracion.ui.RestauracionHomeScreen
 import com.example.qtengo.pyme.ui.PymeFinanceScreen
@@ -60,6 +65,36 @@ class MainActivity : ComponentActivity() {
                 val selectedShoppingList = remember { mutableStateOf<ShoppingList?>(null) }
                 var showAddGasto by remember { mutableStateOf(false) }
                 var showAddInventario by remember { mutableStateOf(false) }
+
+                // --- Solicitud de permiso de notificaciones (Android 13+) ---
+                val permisoConcedido = remember {
+                    mutableStateOf(
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            ContextCompat.checkSelfPermission(
+                                this,
+                                Manifest.permission.POST_NOTIFICATIONS
+                            ) == PackageManager.PERMISSION_GRANTED
+                        } else {
+                            true // En versiones anteriores no hace falta pedir permiso
+                        }
+                    )
+                }
+
+                val launcher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestPermission()
+                ) { concedido ->
+                    permisoConcedido.value = concedido
+                }
+
+                // Pedir permiso al arrancar si es Android 13+ y no está concedido
+                LaunchedEffect(Unit) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                        !permisoConcedido.value
+                    ) {
+                        launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                }
+                // --- Fin solicitud permiso ---
 
                 // Comprobar sesión activa en Firebase Auth al arrancar
                 LaunchedEffect(Unit) {

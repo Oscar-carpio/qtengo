@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,7 +24,13 @@ fun ShoppingListScreen(
     viewModel: ShoppingListViewModel = viewModel()
 ) {
     var showDialog by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") } // 🔍 Estado de búsqueda
     val lists by viewModel.lists.collectAsState()
+
+    // Filtra las listas según el texto de búsqueda
+    val filteredLists = lists.filter { list ->
+        list.name.contains(searchQuery, ignoreCase = true)
+    }
 
     LaunchedEffect(Unit) {
         viewModel.cargarListas()
@@ -67,14 +75,36 @@ fun ShoppingListScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (lists.isEmpty()) {
+        // 🔍 Barra de búsqueda
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            placeholder = { Text("Buscar lista...") },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(12.dp),
+            singleLine = true,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color(0xFF1A3A6B),
+                unfocusedBorderColor = Color.LightGray
+            )
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        if (filteredLists.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                Text("No hay listas aún. ¡Crea una!", color = Color.Gray)
+                Text(
+                    text = if (searchQuery.isEmpty()) "No hay listas aún. ¡Crea una!" else "No se encontraron listas",
+                    color = Color.Gray
+                )
             }
         } else {
             LazyColumn(
@@ -82,7 +112,7 @@ fun ShoppingListScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                items(lists) { list ->
+                items(filteredLists) { list ->
                     ShoppingListCard(
                         list = list,
                         onClick = { onListSelected(list) },

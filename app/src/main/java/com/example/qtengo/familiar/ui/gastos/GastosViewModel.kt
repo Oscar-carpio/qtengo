@@ -7,6 +7,9 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
@@ -35,6 +38,7 @@ class GastosViewModel : ViewModel() {
 
     private val db = FirebaseFirestore.getInstance()
     private val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    private val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
 
     private val _gastos = MutableStateFlow<List<Gasto>>(emptyList())
     val gastos: StateFlow<List<Gasto>> = _gastos
@@ -44,6 +48,40 @@ class GastosViewModel : ViewModel() {
 
     private val _gastosRecurrentes = MutableStateFlow<List<GastoRecurrente>>(emptyList())
     val gastosRecurrentes: StateFlow<List<GastoRecurrente>> = _gastosRecurrentes
+
+    /** Fecha inicio del filtro (null = sin filtro) */
+    private val _fechaInicio = MutableStateFlow<Date?>(null)
+    val fechaInicio: StateFlow<Date?> = _fechaInicio
+
+    /** Fecha fin del filtro (null = sin filtro) */
+    private val _fechaFin = MutableStateFlow<Date?>(null)
+    val fechaFin: StateFlow<Date?> = _fechaFin
+
+    /** Gastos filtrados por rango de fechas */
+    val gastosFiltrados: StateFlow<List<Gasto>> = combine(_gastos, _fechaInicio, _fechaFin) { gastos, inicio, fin ->
+        if (inicio == null && fin == null) {
+            gastos
+        } else {
+            gastos.filter { gasto ->
+                val fechaGasto = runCatching { sdf.parse(gasto.fecha) }.getOrNull() ?: return@filter false
+                val despuesDeInicio = inicio == null || !fechaGasto.before(inicio)
+                val antesDeEnd = fin == null || !fechaGasto.after(fin)
+                despuesDeInicio && antesDeEnd
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Aplica el filtro de rango de fechas */
+    fun filtrarPorFechas(inicio: Date?, fin: Date?) {
+        _fechaInicio.value = inicio
+        _fechaFin.value = fin
+    }
+
+    /** Limpia el filtro de fechas */
+    fun limpiarFiltro() {
+        _fechaInicio.value = null
+        _fechaFin.value = null
+    }
 
     /** Referencia base de gastos en Firestore */
     private fun gastosRef() = db.collection("usuarios").document(uid).collection("gastos")
@@ -87,7 +125,6 @@ class GastosViewModel : ViewModel() {
                     fechaCobro = doc.getString("fechaCobro") ?: ""
                 )
             } ?: emptyList()
-            // Ordenar por fecha de cobro
             _gastosRecurrentes.value = result.sortedBy { it.fechaCobro }
         }
     }
@@ -107,12 +144,7 @@ class GastosViewModel : ViewModel() {
     }
 
     /** Añade un gasto manualmente */
-    fun añadirGasto(
-        descripcion: String,
-        cantidad: Double,
-        categoria: String,
-        tipo: String
-    ) {
+    fun añadirGasto(descripcion: String, cantidad: Double, categoria: String, tipo: String) {
         viewModelScope.launch {
             val fecha = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
             val data = mapOf(
@@ -129,12 +161,7 @@ class GastosViewModel : ViewModel() {
     }
 
     /** Añade un gasto recurrente */
-    fun añadirGastoRecurrente(
-        descripcion: String,
-        cantidad: Double,
-        categoria: String,
-        fechaCobro: String
-    ) {
+    fun añadirGastoRecurrente(descripcion: String, cantidad: Double, categoria: String, fechaCobro: String) {
         viewModelScope.launch {
             val data = mapOf(
                 "descripcion" to descripcion,
@@ -147,13 +174,7 @@ class GastosViewModel : ViewModel() {
     }
 
     /** Edita un gasto recurrente */
-    fun editarGastoRecurrente(
-        gastoId: String,
-        descripcion: String,
-        cantidad: Double,
-        categoria: String,
-        fechaCobro: String
-    ) {
+    fun editarGastoRecurrente(gastoId: String, descripcion: String, cantidad: Double, categoria: String, fechaCobro: String) {
         viewModelScope.launch {
             recurrentesRef().document(gastoId).update(
                 mapOf(
@@ -174,12 +195,7 @@ class GastosViewModel : ViewModel() {
     }
 
     /** Edita un gasto existente */
-    fun editarGasto(
-        gastoId: String,
-        descripcion: String,
-        cantidad: Double,
-        categoria: String
-    ) {
+    fun editarGasto(gastoId: String, descripcion: String, cantidad: Double, categoria: String) {
         viewModelScope.launch {
             gastosRef().document(gastoId).update(
                 mapOf(
@@ -192,11 +208,7 @@ class GastosViewModel : ViewModel() {
     }
 
     /** Registra un gasto desde una lista de la compra */
-    fun registrarGastoDesdeLista(
-        listaId: String,
-        nombreLista: String,
-        cantidad: Double
-    ) {
+    fun registrarGastoDesdeLista(listaId: String, nombreLista: String, cantidad: Double) {
         viewModelScope.launch {
             val fecha = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
             val data = mapOf(

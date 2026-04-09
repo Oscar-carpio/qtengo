@@ -77,4 +77,9 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
+
+    // WorkManager para notificaciones
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+    // Notificaciones
+    implementation("androidx.core:core-ktx:1.12.0")
 }

@@ -22,7 +22,15 @@ data class ShoppingItem(
     val id: String = "",
     val name: String = "",
     val quantity: String = "",
+    val price: String = "",
     val isChecked: Boolean = false
+)
+
+data class FavoriteItem(
+    val id: String = "",
+    val name: String = "",
+    val quantity: String = "",
+    val price: String = ""
 )
 
 class ShoppingListViewModel : ViewModel() {
@@ -36,8 +44,14 @@ class ShoppingListViewModel : ViewModel() {
     private val _items = MutableStateFlow<List<ShoppingItem>>(emptyList())
     val items: StateFlow<List<ShoppingItem>> = _items
 
+    private val _favoritos = MutableStateFlow<List<FavoriteItem>>(emptyList())
+    val favoritos: StateFlow<List<FavoriteItem>> = _favoritos
+
     /** Referencia base del usuario en Firestore */
     private fun listasRef() = db.collection("usuarios").document(uid).collection("listas")
+
+    /** Referencia a la colección de favoritos del usuario */
+    private fun favoritosRef() = db.collection("usuarios").document(uid).collection("favoritos")
 
     /** Carga todas las listas del usuario en tiempo real */
     fun cargarListas() {
@@ -63,11 +77,60 @@ class ShoppingListViewModel : ViewModel() {
                         id = doc.id,
                         name = doc.getString("name") ?: "",
                         quantity = doc.getString("quantity") ?: "",
+                        price = doc.getString("price") ?: "",
                         isChecked = doc.getBoolean("isChecked") ?: false
                     )
                 } ?: emptyList()
                 _items.value = result
             }
+    }
+
+    /** Carga los productos favoritos del usuario en tiempo real */
+    fun cargarFavoritos() {
+        favoritosRef().addSnapshotListener { snapshot, _ ->
+            val result = snapshot?.documents?.map { doc ->
+                FavoriteItem(
+                    id = doc.id,
+                    name = doc.getString("name") ?: "",
+                    quantity = doc.getString("quantity") ?: "",
+                    price = doc.getString("price") ?: ""
+                )
+            } ?: emptyList()
+            _favoritos.value = result
+        }
+    }
+
+    /** Guarda un producto como favorito */
+    fun guardarFavorito(nombre: String, cantidad: String, precio: String) {
+        viewModelScope.launch {
+            val data = mapOf(
+                "name" to nombre,
+                "quantity" to cantidad,
+                "price" to precio
+            )
+            favoritosRef().add(data).await()
+        }
+    }
+
+    /** Elimina un favorito */
+    fun eliminarFavorito(favoritoId: String) {
+        viewModelScope.launch {
+            favoritosRef().document(favoritoId).delete().await()
+        }
+    }
+
+    /** Añade un favorito directamente a una lista */
+    fun añadirFavoritoALista(listaId: String, favorito: FavoriteItem) {
+        viewModelScope.launch {
+            val data = mapOf(
+                "name" to favorito.name,
+                "quantity" to favorito.quantity.ifBlank { "1" },
+                "price" to favorito.price,
+                "isChecked" to false
+            )
+            listasRef().document(listaId).collection("productos").add(data).await()
+            actualizarContador(listaId)
+        }
     }
 
     /** Crea una nueva lista de la compra */
@@ -84,15 +147,30 @@ class ShoppingListViewModel : ViewModel() {
     }
 
     /** Añade un producto a una lista */
-    fun añadirItem(listaId: String, nombre: String, cantidad: String) {
+    fun añadirItem(listaId: String, nombre: String, cantidad: String, precio: String) {
         viewModelScope.launch {
             val data = mapOf(
                 "name" to nombre,
-                "quantity" to cantidad.ifBlank { "1 unidad" },
+                "quantity" to cantidad.ifBlank { "1" },
+                "price" to precio,
                 "isChecked" to false
             )
             listasRef().document(listaId).collection("productos").add(data).await()
             actualizarContador(listaId)
+        }
+    }
+
+    /** Edita un producto existente de una lista */
+    fun editarItem(listaId: String, itemId: String, nombre: String, cantidad: String, precio: String) {
+        viewModelScope.launch {
+            val data = mapOf(
+                "name" to nombre,
+                "quantity" to cantidad,
+                "price" to precio
+            )
+            listasRef().document(listaId)
+                .collection("productos").document(itemId)
+                .update(data).await()
         }
     }
 
