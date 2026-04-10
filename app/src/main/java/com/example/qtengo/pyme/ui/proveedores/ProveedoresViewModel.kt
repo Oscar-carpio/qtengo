@@ -25,6 +25,9 @@ class ProveedoresViewModel : ViewModel() {
         _profileFilter.value = profile
     }
 
+    /**
+     * Inserta un nuevo proveedor.
+     */
     fun insert(name: String, contact: String, phone: String, email: String, category: String) = viewModelScope.launch {
         val supplier = Supplier(
             name = name,
@@ -37,6 +40,16 @@ class ProveedoresViewModel : ViewModel() {
         repository.insert(supplier)
     }
 
+    /**
+     * Actualiza un proveedor existente.
+     */
+    fun update(supplier: Supplier) = viewModelScope.launch {
+        repository.update(supplier)
+    }
+
+    /**
+     * Elimina un proveedor.
+     */
     fun delete(supplierId: String) = viewModelScope.launch {
         repository.delete(supplierId)
     }

@@ -1,6 +1,7 @@
 package com.example.qtengo.pyme.ui.finanzas
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -46,6 +47,8 @@ fun FinanzasPantalla(
         it.concept.contains(searchQuery, ignoreCase = true)
     }
 
+    val neto = (ingresos ?: 0.0) - (gastos ?: 0.0)
+
     Column(modifier = Modifier.fillMaxSize()) {
         QtengoTopBar(
             title = "Gastos e Ingresos",
@@ -86,7 +89,8 @@ fun FinanzasPantalla(
         ) {
             BalanceCard("Ingresos", ingresos ?: 0.0, Color(0xFF2E7D32))
             BalanceCard("Gastos", gastos ?: 0.0, Color(0xFFC62828))
-            BalanceCard("Neto", (ingresos ?: 0.0) - (gastos ?: 0.0), Color(0xFF1565C0))
+            // El neto ahora siempre tiene fondo azul, solo cambia el color del número
+            BalanceCard("Neto", neto, Color(0xFF1565C0), esNeto = true)
         }
 
         Row(
@@ -137,32 +141,72 @@ fun FinanzasPantalla(
     }
 }
 
+/**
+ * Tarjeta de balance que muestra el título y la cantidad.
+ * Si es el neto y la cantidad es negativa, resalta el número en rojo sobre el fondo azul.
+ */
 @Composable
-fun BalanceCard(title: String, amount: Double, color: Color) {
-    Card(colors = CardDefaults.cardColors(containerColor = color), modifier = Modifier.width(100.dp).height(70.dp)) {
-        Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(title, color = Color.White, fontSize = 10.sp)
-            Text("${amount}€", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+fun BalanceCard(titulo: String, cantidad: Double, colorFondo: Color, esNeto: Boolean = false) {
+    // Si es Neto y la cantidad es negativa, el texto de la cantidad será rojo intenso
+    val colorTextoCantidad = if (esNeto && cantidad < 0) Color(0xFFFF5252) else Color.White
+    
+    Card(
+        colors = CardDefaults.cardColors(containerColor = colorFondo), 
+        modifier = Modifier.width(100.dp).height(70.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(), 
+            verticalArrangement = Arrangement.Center, 
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(titulo, color = Color.White, fontSize = 10.sp)
+            Text("${cantidad}€", color = colorTextoCantidad, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         }
     }
 }
 
+/**
+ * Representa una fila de movimiento con el importe centrado en un contenedor estético.
+ */
 @Composable
 fun MovementRow(movement: FinanceMovement, onDelete: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Column {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(movement.concept, fontWeight = FontWeight.Bold)
                 Text(movement.date, fontSize = 12.sp, color = Color.Gray)
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("${movement.amount}€", color = if (movement.type == "INGRESO") Color(0xFF2E7D32) else Color.Red, fontWeight = FontWeight.Bold)
-                IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, null, tint = Color.LightGray) }
+            
+            // Contenedor centrado para la cantidad
+            Surface(
+                color = if (movement.type == "INGRESO") Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.width(90.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(vertical = 6.dp)) {
+                    Text(
+                        text = "${if (movement.type == "INGRESO") "+" else "-"}${movement.amount}€",
+                        color = if (movement.type == "INGRESO") Color(0xFF2E7D32) else Color(0xFFC62828),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                }
+            }
+
+            IconButton(onClick = onDelete) { 
+                Icon(Icons.Default.Delete, null, tint = Color.LightGray) 
             }
         }
     }
 }
 
+/**
+ * Diálogo para añadir movimientos con validación de teclado para solo números positivos.
+ */
 @Composable
 fun DialogoAnadirMovimiento(tipo: String, onDismiss: () -> Unit, onConfirm: (String, Double) -> Unit) {
     var concept by remember { mutableStateOf("") }
@@ -173,14 +217,31 @@ fun DialogoAnadirMovimiento(tipo: String, onDismiss: () -> Unit, onConfirm: (Str
         title = { Text("Añadir $tipo") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = concept, onValueChange = { concept = it }, label = { Text("Concepto") })
-                OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text("Importe") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                OutlinedTextField(
+                    value = concept,
+                    onValueChange = { concept = it },
+                    label = { Text("Concepto") }
+                )
+                OutlinedTextField(
+                    value = amount,
+                    onValueChange = { input ->
+                        // Validar para que solo acepte números y un punto decimal, sin negativos ni letras
+                        if (input.isEmpty() || input.all { it.isDigit() || it == '.' }) {
+                            if (input.count { it == '.' } <= 1) {
+                                amount = input
+                            }
+                        }
+                    },
+                    label = { Text("Importe") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                )
             }
         },
         confirmButton = {
             Button(onClick = { 
-                if (concept.isNotEmpty() && amount.isNotEmpty()) {
-                    onConfirm(concept, amount.toDoubleOrNull() ?: 0.0)
+                val amountValue = amount.toDoubleOrNull()
+                if (concept.isNotEmpty() && amountValue != null && amountValue > 0) {
+                    onConfirm(concept, amountValue)
                 }
             }) { Text("Guardar") }
         },

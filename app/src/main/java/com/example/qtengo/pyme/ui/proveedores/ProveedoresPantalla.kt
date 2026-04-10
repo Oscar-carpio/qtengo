@@ -29,7 +29,6 @@ import com.example.qtengo.core.ui.components.QtengoTopBar
 
 /**
  * Pantalla para visualizar y gestionar la lista de proveedores en el perfil Pyme.
- * Incluye buscador y filtros alfabéticos.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,6 +41,7 @@ fun ProveedoresPantalla(
 ) {
     val suppliers by viewModel.suppliers.observeAsState(emptyList())
     var showAddDialog by remember { mutableStateOf(false) }
+    var supplierToEdit by remember { mutableStateOf<Supplier?>(null) }
     val context = LocalContext.current
     
     var searchQuery by remember { mutableStateOf("") }
@@ -142,7 +142,9 @@ fun ProveedoresPantalla(
                                 data = Uri.parse("mailto:${supplier.email}")
                             }
                             context.startActivity(intent)
-                        }
+                        },
+                        onEdit = { supplierToEdit = supplier },
+                        onDelete = { viewModel.delete(supplier.id) }
                     )
                 }
             }
@@ -161,7 +163,8 @@ fun ProveedoresPantalla(
     }
 
     if (showAddDialog) {
-        DialogoAnadirProveedor(
+        DialogoProveedor(
+            titulo = "Añadir Proveedor",
             onDismiss = { showAddDialog = false },
             onConfirm = { name, contact, phone, email, cat ->
                 viewModel.insert(name, contact, phone, email, cat)
@@ -169,10 +172,31 @@ fun ProveedoresPantalla(
             }
         )
     }
+
+    supplierToEdit?.let { supplier ->
+        DialogoProveedor(
+            titulo = "Editar Proveedor",
+            supplier = supplier,
+            onDismiss = { supplierToEdit = null },
+            onConfirm = { name, contact, phone, email, cat ->
+                viewModel.update(supplier.copy(name = name, contactName = contact, phone = phone, email = email, category = cat))
+                supplierToEdit = null
+            }
+        )
+    }
 }
 
+/**
+ * Representa un proveedor con opciones para llamar, enviar email, editar o eliminar.
+ */
 @Composable
-fun SupplierCardItem(supplier: Supplier, onCall: () -> Unit, onEmail: () -> Unit) {
+fun SupplierCardItem(
+    supplier: Supplier, 
+    onCall: () -> Unit, 
+    onEmail: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
@@ -188,20 +212,25 @@ fun SupplierCardItem(supplier: Supplier, onCall: () -> Unit, onEmail: () -> Unit
                     color = Color(0xFF1A3A6B),
                     modifier = Modifier.weight(1f)
                 )
-                Surface(
-                    color = Color(0xFFE3F2FD),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        text = supplier.category,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1565C0)
-                    )
+                Row {
+                    IconButton(onClick = onEdit) { Icon(Icons.Default.Edit, null, tint = Color.Gray, modifier = Modifier.size(20.dp)) }
+                    IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828), modifier = Modifier.size(20.dp)) }
                 }
             }
-            Text(text = "Contacto: ${supplier.contactName}", fontSize = 14.sp, color = Color.Gray)
+            Surface(
+                color = Color(0xFFE3F2FD),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.padding(vertical = 4.dp)
+            ) {
+                Text(
+                    text = supplier.category,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1565C0)
+                )
+            }
+            Text(text = "Nombre de contacto: ${supplier.contactName}", fontSize = 14.sp, color = Color.Gray)
             Spacer(Modifier.height(12.dp))
             
             Row(
@@ -229,21 +258,30 @@ fun SupplierCardItem(supplier: Supplier, onCall: () -> Unit, onEmail: () -> Unit
     }
 }
 
+/**
+ * Diálogo unificado para añadir o editar proveedores.
+ * Nombres de campos actualizados según solicitud.
+ */
 @Composable
-fun DialogoAnadirProveedor(onDismiss: () -> Unit, onConfirm: (String, String, String, String, String) -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var contact by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("General") }
+fun DialogoProveedor(
+    titulo: String,
+    supplier: Supplier? = null,
+    onDismiss: () -> Unit, 
+    onConfirm: (String, String, String, String, String) -> Unit
+) {
+    var name by remember { mutableStateOf(supplier?.name ?: "") }
+    var contact by remember { mutableStateOf(supplier?.contactName ?: "") }
+    var phone by remember { mutableStateOf(supplier?.phone ?: "") }
+    var email by remember { mutableStateOf(supplier?.email ?: "") }
+    var category by remember { mutableStateOf(supplier?.category ?: "General") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Añadir Proveedor") },
+        title = { Text(titulo) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nombre Empresa") })
-                OutlinedTextField(value = contact, onValueChange = { contact = it }, label = { Text("Contacto") })
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Empresa") })
+                OutlinedTextField(value = contact, onValueChange = { contact = it }, label = { Text("Nombre de contacto") })
                 OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Teléfono") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
                 OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
                 OutlinedTextField(value = category, onValueChange = { category = it }, label = { Text("Categoría") })

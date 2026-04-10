@@ -25,6 +25,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.qtengo.core.domain.models.Employee
 import com.example.qtengo.core.ui.components.QtengoTopBar
 
+/**
+ * Pantalla para la gestión de empleados del módulo Pyme.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EmpleadosPantalla(
@@ -36,6 +39,7 @@ fun EmpleadosPantalla(
 ) {
     val employees by viewModel.employees.observeAsState(emptyList())
     var showAddDialog by remember { mutableStateOf(false) }
+    var empleadoParaEditar by remember { mutableStateOf<Employee?>(null) }
     
     var searchQuery by remember { mutableStateOf("") }
     var sortByAlphabetical by remember { mutableStateOf(true) }
@@ -110,7 +114,11 @@ fun EmpleadosPantalla(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(filteredEmployees) { employee ->
-                    EmpleadoCardItem(employee, onDelete = { viewModel.delete(employee.id) })
+                    EmpleadoCardItem(
+                        employee = employee, 
+                        onEdit = { empleadoParaEditar = employee },
+                        onDelete = { viewModel.delete(employee.id) }
+                    )
                 }
             }
         }
@@ -128,18 +136,34 @@ fun EmpleadosPantalla(
     }
 
     if (showAddDialog) {
-        DialogoAnadirEmpleado(
+        DialogoEmpleado(
+            titulo = "Alta de Trabajador",
             onDismiss = { showAddDialog = false },
-            onConfirm = { name, pos, sal, phone, date ->
-                viewModel.insert(name, pos, sal, phone, date)
+            onConfirm = { name, pos, sal, phone ->
+                viewModel.insert(name, pos, sal, phone, "hoy")
                 showAddDialog = false
+            }
+        )
+    }
+
+    empleadoParaEditar?.let { employee ->
+        DialogoEmpleado(
+            titulo = "Editar Trabajador",
+            employee = employee,
+            onDismiss = { empleadoParaEditar = null },
+            onConfirm = { name, pos, sal, phone ->
+                viewModel.update(employee.copy(name = name, position = pos, salary = sal, phone = phone))
+                empleadoParaEditar = null
             }
         )
     }
 }
 
+/**
+ * Tarjeta individual para cada empleado con botones de editar y eliminar.
+ */
 @Composable
-fun EmpleadoCardItem(employee: Employee, onDelete: () -> Unit) {
+fun EmpleadoCardItem(employee: Employee, onEdit: () -> Unit, onDelete: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
@@ -157,32 +181,59 @@ fun EmpleadoCardItem(employee: Employee, onDelete: () -> Unit) {
                 Text(employee.position, fontSize = 13.sp, color = Color.Gray)
                 Text("%.2f €".format(employee.salary), fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
-            IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, null, tint = Color.Red) }
+            Row {
+                IconButton(onClick = onEdit) { Icon(Icons.Default.Edit, null, tint = Color.Gray) }
+                IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, null, tint = Color.Red) }
+            }
         }
     }
 }
 
+/**
+ * Diálogo para añadir o editar empleados.
+ * Incluye validación de salario para evitar números negativos y letras.
+ */
 @Composable
-fun DialogoAnadirEmpleado(onDismiss: () -> Unit, onConfirm: (String, String, Double, String, String) -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var pos by remember { mutableStateOf("") }
-    var sal by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
+fun DialogoEmpleado(
+    titulo: String,
+    employee: Employee? = null,
+    onDismiss: () -> Unit, 
+    onConfirm: (String, String, Double, String) -> Unit
+) {
+    var name by remember { mutableStateOf(employee?.name ?: "") }
+    var pos by remember { mutableStateOf(employee?.position ?: "") }
+    var sal by remember { mutableStateOf(employee?.salary?.toString() ?: "") }
+    var phone by remember { mutableStateOf(employee?.phone ?: "") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Alta de Trabajador") },
+        title = { Text(titulo) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nombre Completo") })
                 OutlinedTextField(value = pos, onValueChange = { pos = it }, label = { Text("Cargo") })
-                OutlinedTextField(value = sal, onValueChange = { sal = it }, label = { Text("Salario Mensual") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                OutlinedTextField(
+                    value = sal, 
+                    onValueChange = { input ->
+                        // Validar para que solo acepte números y un punto decimal, sin negativos ni letras
+                        if (input.isEmpty() || input.all { it.isDigit() || it == '.' }) {
+                            if (input.count { it == '.' } <= 1) {
+                                sal = input
+                            }
+                        }
+                    }, 
+                    label = { Text("Salario Mensual") }, 
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                )
                 OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Teléfono") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
             }
         },
         confirmButton = {
             Button(onClick = { 
-                if (name.isNotEmpty()) onConfirm(name, pos, sal.toDoubleOrNull() ?: 0.0, phone, "hoy")
+                val salarioValor = sal.toDoubleOrNull() ?: 0.0
+                if (name.isNotEmpty() && salarioValor >= 0) {
+                    onConfirm(name, pos, salarioValor, phone)
+                }
             }) { Text("Guardar") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
