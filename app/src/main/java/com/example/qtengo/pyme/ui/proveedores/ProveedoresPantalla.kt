@@ -2,6 +2,7 @@ package com.example.qtengo.pyme.ui.proveedores
 
 import android.content.Intent
 import android.net.Uri
+import android.util.Patterns
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -28,7 +29,7 @@ import com.example.qtengo.core.domain.models.Supplier
 import com.example.qtengo.core.ui.components.QtengoTopBar
 
 /**
- * Pantalla para visualizar y gestionar la lista de proveedores en el perfil Pyme.
+ * Pantalla principal para la gestión de proveedores en el perfil PYME.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,6 +49,7 @@ fun ProveedoresPantalla(
     var sortByAlphabetical by remember { mutableStateOf(true) }
     var filtersExpanded by remember { mutableStateOf(false) }
 
+    // Filtra los proveedores por nombre o descripción basándose en la búsqueda
     val filteredSuppliers = suppliers.filter {
         it.name.contains(searchQuery, ignoreCase = true) || 
         it.category.contains(searchQuery, ignoreCase = true)
@@ -61,9 +63,7 @@ fun ProveedoresPantalla(
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF4F7FB))
+        modifier = Modifier.fillMaxSize().background(Color(0xFFF4F7FB))
     ) {
         QtengoTopBar(
             title = "Proveedores",
@@ -97,7 +97,7 @@ fun ProveedoresPantalla(
                         OutlinedTextField(
                             value = searchQuery,
                             onValueChange = { searchQuery = it },
-                            label = { Text("Nombre o categoría...") },
+                            label = { Text("Nombre o descripción...") },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
                             trailingIcon = {
@@ -166,8 +166,8 @@ fun ProveedoresPantalla(
         DialogoProveedor(
             titulo = "Añadir Proveedor",
             onDismiss = { showAddDialog = false },
-            onConfirm = { name, contact, phone, email, cat ->
-                viewModel.insert(name, contact, phone, email, cat)
+            onConfirm = { name, contact, phone, email, desc ->
+                viewModel.insert(name, contact, phone, email, desc)
                 showAddDialog = false
             }
         )
@@ -178,8 +178,8 @@ fun ProveedoresPantalla(
             titulo = "Editar Proveedor",
             supplier = supplier,
             onDismiss = { supplierToEdit = null },
-            onConfirm = { name, contact, phone, email, cat ->
-                viewModel.update(supplier.copy(name = name, contactName = contact, phone = phone, email = email, category = cat))
+            onConfirm = { name, contact, phone, email, desc ->
+                viewModel.update(supplier.copy(name = name, contactName = contact, phone = phone, email = email, category = desc))
                 supplierToEdit = null
             }
         )
@@ -187,7 +187,7 @@ fun ProveedoresPantalla(
 }
 
 /**
- * Representa un proveedor con opciones para llamar, enviar email, editar o eliminar.
+ * Tarjeta individual de proveedor con acciones rápidas de contacto.
  */
 @Composable
 fun SupplierCardItem(
@@ -217,20 +217,22 @@ fun SupplierCardItem(
                     IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828), modifier = Modifier.size(20.dp)) }
                 }
             }
-            Surface(
-                color = Color(0xFFE3F2FD),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.padding(vertical = 4.dp)
-            ) {
-                Text(
-                    text = supplier.category,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1565C0)
-                )
+            if (supplier.category.isNotBlank()) {
+                Surface(
+                    color = Color(0xFFE3F2FD),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.padding(vertical = 4.dp)
+                ) {
+                    Text(
+                        text = supplier.category,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1565C0)
+                    )
+                }
             }
-            Text(text = "Nombre de contacto: ${supplier.contactName}", fontSize = 14.sp, color = Color.Gray)
+            Text(text = "Contacto: ${supplier.contactName}", fontSize = 14.sp, color = Color.Gray)
             Spacer(Modifier.height(12.dp))
             
             Row(
@@ -259,8 +261,7 @@ fun SupplierCardItem(
 }
 
 /**
- * Diálogo unificado para añadir o editar proveedores.
- * Nombres de campos actualizados según solicitud.
+ * Diálogo para la creación y edición de proveedores con validación de datos.
  */
 @Composable
 fun DialogoProveedor(
@@ -273,7 +274,11 @@ fun DialogoProveedor(
     var contact by remember { mutableStateOf(supplier?.contactName ?: "") }
     var phone by remember { mutableStateOf(supplier?.phone ?: "") }
     var email by remember { mutableStateOf(supplier?.email ?: "") }
-    var category by remember { mutableStateOf(supplier?.category ?: "General") }
+    var description by remember { mutableStateOf(supplier?.category ?: "") }
+
+    // Validaciones simples
+    val isEmailValid = email.isEmpty() || Patterns.EMAIL_ADDRESS.matcher(email).matches()
+    val isPhoneValid = phone.isEmpty() || phone.startsWith("+") || phone.all { it.isDigit() }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -282,13 +287,41 @@ fun DialogoProveedor(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Empresa") })
                 OutlinedTextField(value = contact, onValueChange = { contact = it }, label = { Text("Nombre de contacto") })
-                OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Teléfono") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
-                OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
-                OutlinedTextField(value = category, onValueChange = { category = it }, label = { Text("Categoría") })
+                
+                // Campo Teléfono con filtrado de caracteres
+                OutlinedTextField(
+                    value = phone, 
+                    onValueChange = { input -> 
+                        // Solo permite números y el signo +
+                        if (input.all { it.isDigit() || it == '+' }) phone = input 
+                    }, 
+                    label = { Text("Teléfono (ej: +34...)") }, 
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    isError = !isPhoneValid
+                )
+                
+                // Campo Email con validación visual
+                OutlinedTextField(
+                    value = email, 
+                    onValueChange = { email = it }, 
+                    label = { Text("Email") }, 
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    isError = !isEmailValid,
+                    supportingText = { if (!isEmailValid) Text("Formato de email inválido", color = Color.Red) }
+                )
+                
+                OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Descripción / Detalles") })
             }
         },
         confirmButton = {
-            Button(onClick = { if(name.isNotEmpty()) onConfirm(name, contact, phone, email, category) }) { Text("Guardar") }
+            Button(
+                onClick = { 
+                    if(name.isNotEmpty() && isEmailValid && phone.isNotEmpty()) {
+                        onConfirm(name, contact, phone, email, description) 
+                    }
+                },
+                enabled = name.isNotEmpty() && isEmailValid && isPhoneValid && phone.isNotEmpty()
+            ) { Text("Guardar") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
     )

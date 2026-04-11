@@ -12,10 +12,11 @@ import java.util.*
 /**
  * ViewModel para gestionar la lógica de la plantilla de empleados y su impacto financiero.
  */
-class EmpleadosViewModel : ViewModel() {
+class EmpleadosViewModel(
+    private val repositorioEmpleados: EmployeeRepository = EmployeeRepository(),
+    private val repositorioFinanzas: FinanceRepository = FinanceRepository()
+) : ViewModel() {
 
-    private val repositorioEmpleados = EmployeeRepository()
-    private val repositorioFinanzas = FinanceRepository()
     private val filtroPerfil = MutableLiveData<String>()
 
     /**
@@ -36,18 +37,21 @@ class EmpleadosViewModel : ViewModel() {
     /**
      * Registra un nuevo empleado y genera automáticamente un gasto de nómina.
      */
-    fun insert(nombre: String, cargo: String, salario: Double, telefono: String, fechaInicio: String) = viewModelScope.launch {
+    fun insert(nombre: String, cargo: String, salario: Double, telefono: String, email: String, detalles: String) = viewModelScope.launch {
+        val fechaActual = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
         val empleado = Employee(
             name = nombre,
             position = cargo,
             salary = salario,
             phone = telefono,
-            startDate = fechaInicio,
-            profile = filtroPerfil.value ?: "PYME"
+            email = email,
+            startDate = fechaActual,
+            profile = filtroPerfil.value ?: "PYME",
+            details = detalles
         )
         repositorioEmpleados.insert(empleado)
         
-        // Bonus: Registrar la nómina como un gasto en Finanzas
+        // Registrar la nómina como un gasto en Finanzas
         registrarNominaComoGasto(nombre, salario)
     }
 
