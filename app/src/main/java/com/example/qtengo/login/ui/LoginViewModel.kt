@@ -18,23 +18,22 @@ class AuthViewModel : ViewModel() {
     val authState: StateFlow<AuthState> = _authState
 
     /**
-     * Registra un nuevo usuario en Firebase Auth y guarda sus datos en Firestore
+     * Registra un nuevo usuario en Firebase Auth y guarda sus datos en Firestore.
+     * Los perfiles se guardan como array en Firestore para soportar multiselección.
      */
     fun registrar(
         nombre: String,
-        apellido1: String,
-        apellido2: String,
+        apellidos: String,
         email: String,
         password: String,
-        perfil: String
+        perfiles: List<String>
     ) {
         viewModelScope.launch {
-            // Validar email
+            // Validaciones locales antes de llamar a Firebase
             if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
                 _authState.value = AuthState.Error("El email no tiene un formato válido")
                 return@launch
             }
-            // Validar contraseña
             if (password.length < 8) {
                 _authState.value = AuthState.Error("La contraseña debe tener al menos 8 caracteres")
                 return@launch
@@ -47,22 +46,24 @@ class AuthViewModel : ViewModel() {
                 _authState.value = AuthState.Error("La contraseña debe tener al menos un número")
                 return@launch
             }
+            if (perfiles.isEmpty()) {
+                _authState.value = AuthState.Error("Debes seleccionar al menos un perfil")
+                return@launch
+            }
 
             try {
                 _authState.value = AuthState.Loading
 
-                // Crear usuario en Firebase Auth
                 val resultado = auth.createUserWithEmailAndPassword(email, password).await()
                 val uid = resultado.user?.uid ?: throw Exception("Error al obtener UID")
 
-                // Guardar datos extra en Firestore
+                // Guardamos perfiles como array — compatible con multiselección
                 val userData = mapOf(
                     "uid" to uid,
                     "nombre" to nombre,
-                    "apellido1" to apellido1,
-                    "apellido2" to apellido2,
+                    "apellidos" to apellidos,
                     "email" to email,
-                    "perfil" to perfil
+                    "perfiles" to perfiles          // List<String> → array en Firestore
                 )
                 firestore.collection("usuarios").document(uid).set(userData).await()
 
@@ -70,7 +71,7 @@ class AuthViewModel : ViewModel() {
                     uid = uid,
                     nombre = nombre,
                     email = email,
-                    perfil = perfil
+                    perfiles = perfiles
                 )
             } catch (e: Exception) {
                 _authState.value = AuthState.Error(e.message ?: "Error al registrar")
@@ -79,7 +80,9 @@ class AuthViewModel : ViewModel() {
     }
 
     /**
-     * Inicia sesión con Firebase Auth y recupera los datos del usuario desde Firestore
+     * Inicia sesión y recupera los perfiles del usuario desde Firestore.
+     * Soporta tanto el campo nuevo "perfiles" (List) como el antiguo "perfil" (String)
+     * para no romper cuentas ya registradas.
      */
     fun login(email: String, password: String) {
         viewModelScope.launch {
@@ -91,20 +94,27 @@ class AuthViewModel : ViewModel() {
             try {
                 _authState.value = AuthState.Loading
 
-                // Login en Firebase Auth
                 val resultado = auth.signInWithEmailAndPassword(email, password).await()
                 val uid = resultado.user?.uid ?: throw Exception("Error al obtener UID")
 
-                // Recuperar datos del usuario desde Firestore
                 val doc = firestore.collection("usuarios").document(uid).get().await()
                 val nombre = doc.getString("nombre") ?: ""
-                val perfil = doc.getString("perfil") ?: ""
+
+                // Compatibilidad hacia atrás: leer "perfiles" (nuevo) o "perfil" (antiguo)
+                @Suppress("UNCHECKED_CAST")
+                val perfiles: List<String> = when {
+                    doc.get("perfiles") != null ->
+                        (doc.get("perfiles") as? List<String>) ?: emptyList()
+                    doc.getString("perfil") != null ->
+                        listOf(doc.getString("perfil")!!)
+                    else -> emptyList()
+                }
 
                 _authState.value = AuthState.Success(
                     uid = uid,
                     nombre = nombre,
                     email = email,
-                    perfil = perfil
+                    perfiles = perfiles
                 )
             } catch (e: Exception) {
                 _authState.value = AuthState.Error("Email o contraseña incorrectos")
@@ -113,7 +123,7 @@ class AuthViewModel : ViewModel() {
     }
 
     /**
-     * Cierra la sesión del usuario actual
+     * Cierra la sesión del usuario actual.
      */
     fun cerrarSesion() {
         auth.signOut()
@@ -121,7 +131,7 @@ class AuthViewModel : ViewModel() {
     }
 
     /**
-     * Resetea el estado a Idle
+     * Resetea el estado a Idle (llamar desde la UI tras navegar).
      */
     fun reset() {
         _authState.value = AuthState.Idle
@@ -135,7 +145,7 @@ sealed class AuthState {
         val uid: String,
         val nombre: String,
         val email: String,
-        val perfil: String
+        val perfiles: List<String>      // antes era perfil: String
     ) : AuthState()
     data class Error(val mensaje: String) : AuthState()
 }

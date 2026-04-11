@@ -8,6 +8,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -22,6 +24,21 @@ fun EditarTareaDialog(
     val prioridades = listOf("Alta", "Media", "Baja")
     var prioridadSeleccionada by remember { mutableStateOf(tarea.prioridad) }
 
+    var errorTitulo by remember { mutableStateOf("") }
+    var errorFecha by remember { mutableStateOf("") }
+
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale("es", "ES")) }
+
+    // FIX WARN — valida formato y si la fecha es futura
+    fun validarFecha(input: String): String {
+        if (input.isBlank()) return "La fecha es obligatoria"
+        sdf.isLenient = false
+        val fechaParsed = runCatching { sdf.parse(input) }.getOrNull()
+            ?: return "Formato inválido — usa dd/MM/yyyy"
+        if (fechaParsed.before(Date())) return "La fecha ya ha pasado — no se reprogramará notificación"
+        return ""
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Editar tarea") },
@@ -29,10 +46,18 @@ fun EditarTareaDialog(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = titulo,
-                    onValueChange = { titulo = it },
+                    onValueChange = {
+                        titulo = it
+                        errorTitulo = ""
+                    },
                     label = { Text("Título") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = errorTitulo.isNotEmpty(),
+                    supportingText = {
+                        if (errorTitulo.isNotEmpty())
+                            Text(errorTitulo, color = MaterialTheme.colorScheme.error)
+                    }
                 )
                 OutlinedTextField(
                     value = descripcion,
@@ -43,10 +68,24 @@ fun EditarTareaDialog(
                 )
                 OutlinedTextField(
                     value = fecha,
-                    onValueChange = { fecha = it },
+                    onValueChange = {
+                        fecha = it
+                        errorFecha = ""
+                    },
                     label = { Text("Fecha (dd/MM/yyyy)") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = errorFecha.isNotEmpty(),
+                    supportingText = {
+                        if (errorFecha.isNotEmpty()) {
+                            val esPasada = errorFecha.contains("pasado")
+                            Text(
+                                text = errorFecha,
+                                color = if (esPasada) Color(0xFFF57C00)
+                                else MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
                 )
                 Text(
                     text = "Prioridad",
@@ -75,8 +114,21 @@ fun EditarTareaDialog(
         },
         confirmButton = {
             TextButton(onClick = {
-                if (titulo.isNotBlank()) {
-                    onConfirm(titulo, descripcion, fecha, prioridadSeleccionada)
+                var valido = true
+
+                if (titulo.isBlank()) {
+                    errorTitulo = "El título no puede estar vacío"
+                    valido = false
+                }
+
+                val errorFechaActual = validarFecha(fecha)
+                if (errorFechaActual.isNotEmpty()) {
+                    errorFecha = errorFechaActual
+                    if (!errorFechaActual.contains("pasado")) valido = false
+                }
+
+                if (valido) {
+                    onConfirm(titulo.trim(), descripcion.trim(), fecha.trim(), prioridadSeleccionada)
                 }
             }) { Text("Guardar") }
         },

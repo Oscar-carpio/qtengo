@@ -22,9 +22,25 @@ fun InventarioScreen(
     viewModel: InventarioViewModel = viewModel()
 ) {
     val items by viewModel.items.collectAsState()
+    var itemAEditar by remember { mutableStateOf<InventarioItem?>(null) }
+
+    // INFO — contamos artículos bajo mínimos para el header
+    val bajoDeMínimos = items.count { it.cantidad <= it.minStock }
 
     LaunchedEffect(Unit) {
         viewModel.cargarItems()
+    }
+
+    // Diálogo de edición
+    itemAEditar?.let { item ->
+        EditarInventarioDialog(
+            item = item,
+            onConfirm = { nombre, cantidad, ubicacion, minStock, notas, fecha ->
+                viewModel.editarItem(item.id, nombre, cantidad, ubicacion, minStock, notas, fecha)
+                itemAEditar = null
+            },
+            onDismiss = { itemAEditar = null }
+        )
     }
 
     Column(
@@ -32,7 +48,6 @@ fun InventarioScreen(
             .fillMaxSize()
             .background(Color(0xFFF4F7FB))
     ) {
-        // Header
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -45,13 +60,22 @@ fun InventarioScreen(
             ) {
                 Text(text = "←", fontSize = 24.sp, color = Color.White)
             }
-            Text(
-                text = "Inventario del hogar",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                modifier = Modifier.align(Alignment.Center)
-            )
+            Column(modifier = Modifier.align(Alignment.Center)) {
+                Text(
+                    text = "Inventario del hogar",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                // INFO — aviso de artículos bajo mínimos en el header
+                if (bajoDeMínimos > 0) {
+                    Text(
+                        text = "⚠️ $bajoDeMínimos artículo${if (bajoDeMínimos > 1) "s" else ""} bajo mínimos",
+                        fontSize = 12.sp,
+                        color = Color(0xFFFFCC80)
+                    )
+                }
+            }
         }
 
         InventarioResumenCard(
@@ -86,7 +110,8 @@ fun InventarioScreen(
                 items(items) { item ->
                     InventarioItemCard(
                         item = item,
-                        onDelete = { viewModel.eliminarItem(item.id) }
+                        onDelete = { viewModel.eliminarItem(item.id) },
+                        onEdit = { itemAEditar = it }
                     )
                 }
             }

@@ -17,11 +17,13 @@ class TareaNotificationWorker(
         const val CHANNEL_ID = "tareas_channel"
         const val KEY_TITULO = "titulo"
         const val KEY_DESCRIPCION = "descripcion"
+        const val KEY_TAREA_ID = "tareaId"   // FIX WARN — nuevo campo para ID único
     }
 
     override fun doWork(): Result {
         val titulo = inputData.getString(KEY_TITULO) ?: "Tarea pendiente"
         val descripcion = inputData.getString(KEY_DESCRIPCION) ?: ""
+        val tareaId = inputData.getString(KEY_TAREA_ID) ?: titulo
 
         crearCanalNotificacion()
 
@@ -34,12 +36,14 @@ class TareaNotificationWorker(
             .build()
 
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.notify(System.currentTimeMillis().toInt(), notificacion)
+
+        // FIX WARN — usamos el hash del tareaId en lugar de currentTimeMillis().toInt()
+        // El tareaId es el ID del documento Firestore, único por definición
+        manager.notify(tareaId.hashCode(), notificacion)
 
         return Result.success()
     }
 
-    /** Crea el canal de notificaciones (obligatorio en Android 8+) */
     private fun crearCanalNotificacion() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val canal = NotificationChannel(

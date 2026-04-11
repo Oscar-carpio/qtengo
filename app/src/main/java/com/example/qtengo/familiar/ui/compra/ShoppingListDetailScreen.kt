@@ -31,7 +31,8 @@ fun ShoppingListDetailScreen(
     val items by viewModel.items.collectAsState()
     val favoritos by viewModel.favoritos.collectAsState()
     val listaCompleta = items.isNotEmpty() && items.all { it.isChecked }
-    val precioTotal = items.sumOf { it.price.toDoubleOrNull() ?: 0.0 }
+    val precioTotal = items.sumOf { it.price }
+    val isLoading by viewModel.isLoading.collectAsState()
 
     LaunchedEffect(shoppingList.id) {
         viewModel.cargarItems(shoppingList.id)
@@ -228,6 +229,7 @@ fun ShoppingListDetailScreen(
         // Botón ver favoritos
         Button(
             onClick = { showFavoritosDialog = true },
+            enabled = !isLoading,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
@@ -242,6 +244,7 @@ fun ShoppingListDetailScreen(
         // Botón añadir producto
         Button(
             onClick = { showDialog = true },
+            enabled = !isLoading,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)

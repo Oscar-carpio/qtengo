@@ -11,7 +11,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun LoginScreen(
-    onLoginExitoso: (uid: String, perfil: String) -> Unit,
+    onLoginExitoso: (uid: String, perfiles: List<String>) -> Unit,  // antes: perfil: String
     onIrARegistro: () -> Unit,
     authViewModel: AuthViewModel = viewModel()
 ) {
@@ -20,11 +20,10 @@ fun LoginScreen(
 
     val authState by authViewModel.authState.collectAsState()
 
-    // Navegar cuando el login sea exitoso
     LaunchedEffect(authState) {
         if (authState is AuthState.Success) {
             val success = authState as AuthState.Success
-            onLoginExitoso(success.uid, success.perfil)
+            onLoginExitoso(success.uid, success.perfiles)
             authViewModel.reset()
         }
     }
@@ -59,7 +58,6 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Mostrar error si lo hay
         if (authState is AuthState.Error) {
             Text(
                 text = (authState as AuthState.Error).mensaje,
@@ -68,7 +66,6 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        // Botón con loading
         Button(
             onClick = { authViewModel.login(email, password) },
             modifier = Modifier.fillMaxWidth(),

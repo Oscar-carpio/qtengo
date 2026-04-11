@@ -2,7 +2,9 @@ package com.example.qtengo.familiar.ui.inventario
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -12,6 +14,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import java.text.SimpleDateFormat
+import java.util.*
 
 @Composable
 fun AddInventarioScreen(
@@ -26,8 +30,15 @@ fun AddInventarioScreen(
     var fechaCaducidad by remember { mutableStateOf("") }
     var tieneFechaCaducidad by remember { mutableStateOf(false) }
 
+    var errorNombre by remember { mutableStateOf("") }
+    var errorCantidad by remember { mutableStateOf("") }
+    var errorMinStock by remember { mutableStateOf("") }
+    var errorFecha by remember { mutableStateOf("") }
+
     val ubicaciones = listOf("Cocina", "Despensa", "Lavadero", "Trastero", "Baño", "Otros")
     var ubicacionSeleccionada by remember { mutableStateOf("Cocina") }
+
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale("es", "ES")).apply { isLenient = false } }
 
     Column(
         modifier = Modifier
@@ -58,6 +69,7 @@ fun AddInventarioScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -65,29 +77,62 @@ fun AddInventarioScreen(
 
             OutlinedTextField(
                 value = nombre,
-                onValueChange = { nombre = it },
+                onValueChange = { nombre = it; errorNombre = "" },
                 label = { Text("Nombre del artículo") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                isError = errorNombre.isNotEmpty(),
+                supportingText = {
+                    if (errorNombre.isNotEmpty())
+                        Text(errorNombre, color = MaterialTheme.colorScheme.error)
+                }
             )
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // FIX WARN — validamos que cantidad sea un entero positivo
                 OutlinedTextField(
                     value = cantidad,
-                    onValueChange = { cantidad = it },
+                    onValueChange = {
+                        cantidad = it
+                        errorCantidad = when {
+                            it.isBlank() -> ""
+                            it.toIntOrNull() == null -> "Solo números enteros"
+                            it.toInt() <= 0 -> "Debe ser mayor que 0"
+                            else -> ""
+                        }
+                    },
                     label = { Text("Cantidad") },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    isError = errorCantidad.isNotEmpty(),
+                    supportingText = {
+                        if (errorCantidad.isNotEmpty())
+                            Text(errorCantidad, color = MaterialTheme.colorScheme.error)
+                    }
                 )
+                // FIX WARN — validamos que minStock sea un entero no negativo
                 OutlinedTextField(
                     value = minStock,
-                    onValueChange = { minStock = it },
+                    onValueChange = {
+                        minStock = it
+                        errorMinStock = when {
+                            it.isBlank() -> ""
+                            it.toIntOrNull() == null -> "Solo números enteros"
+                            it.toInt() < 0 -> "No puede ser negativo"
+                            else -> ""
+                        }
+                    },
                     label = { Text("Stock Mín.") },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    isError = errorMinStock.isNotEmpty(),
+                    supportingText = {
+                        if (errorMinStock.isNotEmpty())
+                            Text(errorMinStock, color = MaterialTheme.colorScheme.error)
+                    }
                 )
             }
 
@@ -100,7 +145,6 @@ fun AddInventarioScreen(
                 shape = RoundedCornerShape(12.dp)
             )
 
-            // Switch fecha de caducidad
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
@@ -115,20 +159,34 @@ fun AddInventarioScreen(
                     checked = tieneFechaCaducidad,
                     onCheckedChange = {
                         tieneFechaCaducidad = it
-                        if (!it) fechaCaducidad = ""
+                        if (!it) { fechaCaducidad = ""; errorFecha = "" }
                     },
                     colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF1A3A6B))
                 )
             }
 
             if (tieneFechaCaducidad) {
+                // FIX WARN — validamos formato de fecha de caducidad
                 OutlinedTextField(
                     value = fechaCaducidad,
-                    onValueChange = { fechaCaducidad = it },
+                    onValueChange = {
+                        fechaCaducidad = it
+                        errorFecha = if (it.isNotBlank()) {
+                            runCatching { sdf.parse(it) }.fold(
+                                onSuccess = { "" },
+                                onFailure = { "Formato inválido — usa dd/MM/yyyy" }
+                            )
+                        } else ""
+                    },
                     label = { Text("Fecha caducidad (dd/MM/yyyy)") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    isError = errorFecha.isNotEmpty(),
+                    supportingText = {
+                        if (errorFecha.isNotEmpty())
+                            Text(errorFecha, color = MaterialTheme.colorScheme.error)
+                    }
                 )
             }
 
@@ -157,17 +215,40 @@ fun AddInventarioScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Button(
                 onClick = {
-                    if (nombre.isNotBlank() && cantidad.isNotBlank()) {
+                    var valido = true
+
+                    if (nombre.isBlank()) {
+                        errorNombre = "El nombre no puede estar vacío"; valido = false
+                    }
+
+                    val cantidadInt = cantidad.toIntOrNull()
+                    if (cantidadInt == null || cantidadInt <= 0) {
+                        errorCantidad = "Introduce una cantidad válida mayor que 0"; valido = false
+                    }
+
+                    val minStockInt = minStock.toIntOrNull()
+                    if (minStockInt == null || minStockInt < 0) {
+                        errorMinStock = "Introduce un stock mínimo válido"; valido = false
+                    }
+
+                    if (tieneFechaCaducidad && fechaCaducidad.isNotBlank()) {
+                        val fechaOk = runCatching { sdf.parse(fechaCaducidad) }.isSuccess
+                        if (!fechaOk) {
+                            errorFecha = "Formato inválido — usa dd/MM/yyyy"; valido = false
+                        }
+                    }
+
+                    if (valido && cantidadInt != null && minStockInt != null) {
                         viewModel.añadirItem(
-                            nombre = nombre,
-                            cantidad = cantidad.toIntOrNull() ?: 0,
+                            nombre = nombre.trim(),
+                            cantidad = cantidadInt,
                             ubicacion = ubicacionSeleccionada,
-                            minStock = minStock.toIntOrNull() ?: 1,
-                            notas = notas,
+                            minStock = minStockInt,
+                            notas = notas.trim(),
                             fechaCaducidad = fechaCaducidad.ifBlank { null }
                         )
                         onItemGuardado()

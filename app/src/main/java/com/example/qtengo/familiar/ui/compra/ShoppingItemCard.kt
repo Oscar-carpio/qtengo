@@ -21,10 +21,10 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun ShoppingItemCard(
     item: ShoppingItem,
-    esFavorito: Boolean,                          // 👈 nuevo parámetro
+    esFavorito: Boolean,
     onToggle: (Boolean) -> Unit,
     onDelete: () -> Unit,
-    onEdit: (String, String, String) -> Unit,
+    onEdit: (nombre: String, cantidad: String, precio: Double) -> Unit,  // FIX WARN — precio Double
     onFavorito: () -> Unit
 ) {
     var showEditDialog by remember { mutableStateOf(false) }
@@ -76,11 +76,15 @@ fun ShoppingItemCard(
                     textDecoration = if (item.isChecked) TextDecoration.LineThrough else TextDecoration.None
                 )
                 Text(text = "Cantidad: ${item.quantity}", fontSize = 12.sp, color = Color.Gray)
-                if (item.price.isNotBlank()) {
-                    Text(text = "Precio: ${item.price} €", fontSize = 12.sp, color = Color.Gray)
+                // FIX WARN — formateamos Double a "X.XX €", solo si tiene precio
+                if (item.price > 0.0) {
+                    Text(
+                        text = "Precio: ${"%.2f".format(item.price)} €",
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
                 }
             }
-            // Botón favorito — icono relleno si es favorito, vacío si no lo es
             IconButton(onClick = onFavorito) {
                 Icon(
                     imageVector = if (esFavorito) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
@@ -88,7 +92,6 @@ fun ShoppingItemCard(
                     tint = if (esFavorito) Color(0xFFE53935) else Color.Gray
                 )
             }
-            // Botón editar
             IconButton(onClick = { showEditDialog = true }) {
                 Icon(
                     imageVector = Icons.Default.Edit,
@@ -96,7 +99,6 @@ fun ShoppingItemCard(
                     tint = Color(0xFF1A3A6B)
                 )
             }
-            // Botón eliminar
             IconButton(onClick = onDelete) {
                 Icon(
                     imageVector = Icons.Default.Delete,

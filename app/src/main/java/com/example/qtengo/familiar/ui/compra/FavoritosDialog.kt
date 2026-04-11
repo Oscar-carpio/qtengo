@@ -72,15 +72,15 @@ fun FavoritosDialog(
                                             color = Color.Gray
                                         )
                                     }
-                                    if (favorito.price.isNotBlank()) {
+                                    // FIX WARN — formateamos Double a "X.XX €"
+                                    if (favorito.price > 0.0) {
                                         Text(
-                                            text = "Precio: ${favorito.price} €",
+                                            text = "Precio: ${"%.2f".format(favorito.price)} €",
                                             fontSize = 12.sp,
                                             color = Color.Gray
                                         )
                                     }
                                 }
-                                // Botón añadir a lista
                                 IconButton(onClick = { onAñadir(favorito) }) {
                                     Icon(
                                         imageVector = Icons.Default.Add,
@@ -88,7 +88,6 @@ fun FavoritosDialog(
                                         tint = Color(0xFF1A3A6B)
                                     )
                                 }
-                                // Botón eliminar favorito
                                 IconButton(onClick = { onEliminar(favorito.id) }) {
                                     Icon(
                                         imageVector = Icons.Default.Delete,

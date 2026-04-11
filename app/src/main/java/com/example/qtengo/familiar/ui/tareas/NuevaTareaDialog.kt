@@ -8,6 +8,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -21,6 +23,21 @@ fun NuevaTareaDialog(
     val prioridades = listOf("Alta", "Media", "Baja")
     var prioridadSeleccionada by remember { mutableStateOf("Media") }
 
+    var errorTitulo by remember { mutableStateOf("") }
+    var errorFecha by remember { mutableStateOf("") }
+
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale("es", "ES")) }
+
+    // FIX WARN — valida formato y si la fecha es futura
+    fun validarFecha(input: String): String {
+        if (input.isBlank()) return "La fecha es obligatoria"
+        sdf.isLenient = false
+        val fechaParsed = runCatching { sdf.parse(input) }.getOrNull()
+            ?: return "Formato inválido — usa dd/MM/yyyy"
+        if (fechaParsed.before(Date())) return "La fecha ya ha pasado — no se programará notificación"
+        return ""
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Nueva tarea") },
@@ -28,10 +45,18 @@ fun NuevaTareaDialog(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = titulo,
-                    onValueChange = { titulo = it },
+                    onValueChange = {
+                        titulo = it
+                        errorTitulo = ""
+                    },
                     label = { Text("Título") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = errorTitulo.isNotEmpty(),
+                    supportingText = {
+                        if (errorTitulo.isNotEmpty())
+                            Text(errorTitulo, color = MaterialTheme.colorScheme.error)
+                    }
                 )
                 OutlinedTextField(
                     value = descripcion,
@@ -42,10 +67,26 @@ fun NuevaTareaDialog(
                 )
                 OutlinedTextField(
                     value = fecha,
-                    onValueChange = { fecha = it },
+                    onValueChange = {
+                        fecha = it
+                        errorFecha = ""
+                    },
                     label = { Text("Fecha (dd/MM/yyyy)") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    // FIX WARN — marcamos como error si el formato es inválido
+                    isError = errorFecha.isNotEmpty(),
+                    supportingText = {
+                        if (errorFecha.isNotEmpty()) {
+                            // Fecha pasada es advertencia, no error bloqueante
+                            val esPasada = errorFecha.contains("pasado")
+                            Text(
+                                text = errorFecha,
+                                color = if (esPasada) Color(0xFFF57C00)
+                                else MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
                 )
                 Text(
                     text = "Prioridad",
@@ -74,8 +115,22 @@ fun NuevaTareaDialog(
         },
         confirmButton = {
             TextButton(onClick = {
-                if (titulo.isNotBlank()) {
-                    onConfirm(titulo, descripcion, fecha, prioridadSeleccionada)
+                var valido = true
+
+                if (titulo.isBlank()) {
+                    errorTitulo = "El título no puede estar vacío"
+                    valido = false
+                }
+
+                val errorFechaActual = validarFecha(fecha)
+                // Formato inválido bloquea — fecha pasada advierte pero permite guardar
+                if (errorFechaActual.isNotEmpty()) {
+                    errorFecha = errorFechaActual
+                    if (!errorFechaActual.contains("pasado")) valido = false
+                }
+
+                if (valido) {
+                    onConfirm(titulo.trim(), descripcion.trim(), fecha.trim(), prioridadSeleccionada)
                 }
             }) { Text("Crear") }
         },

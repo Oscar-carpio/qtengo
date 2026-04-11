@@ -22,6 +22,8 @@ fun AddGastoScreen(
 ) {
     var descripcion by remember { mutableStateOf("") }
     var cantidad by remember { mutableStateOf("") }
+    var errorDescripcion by remember { mutableStateOf(false) }
+    var errorCantidad by remember { mutableStateOf(false) }
 
     val categorias = listOf("Alimentación", "Suministros", "Ocio", "Transporte", "Salud", "Otros")
     var categoriaSeleccionada by remember { mutableStateOf("Alimentación") }
@@ -62,20 +64,37 @@ fun AddGastoScreen(
 
             OutlinedTextField(
                 value = descripcion,
-                onValueChange = { descripcion = it },
+                onValueChange = {
+                    descripcion = it
+                    errorDescripcion = false
+                },
                 label = { Text("Descripción") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                isError = errorDescripcion,
+                supportingText = {
+                    if (errorDescripcion)
+                        Text("La descripción no puede estar vacía", color = MaterialTheme.colorScheme.error)
+                }
             )
 
             OutlinedTextField(
                 value = cantidad,
-                onValueChange = { cantidad = it },
+                onValueChange = { input ->
+                    cantidad = input
+                    // FIX WARN — validamos que sea positivo y mayor que 0
+                    errorCantidad = input.toDoubleOrNull()?.let { it <= 0 } ?: input.isNotBlank()
+                },
                 label = { Text("Cantidad (€)") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                isError = errorCantidad,
+                supportingText = {
+                    if (errorCantidad)
+                        Text("Introduce un importe válido y mayor que 0", color = MaterialTheme.colorScheme.error)
+                }
             )
 
             Text(
@@ -107,9 +126,19 @@ fun AddGastoScreen(
             Button(
                 onClick = {
                     val cantidadDouble = cantidad.toDoubleOrNull()
-                    if (descripcion.isNotBlank() && cantidadDouble != null) {
+                    var valido = true
+
+                    if (descripcion.isBlank()) {
+                        errorDescripcion = true; valido = false
+                    }
+                    // FIX WARN — cantidad debe existir y ser mayor que 0
+                    if (cantidadDouble == null || cantidadDouble <= 0) {
+                        errorCantidad = true; valido = false
+                    }
+
+                    if (valido && cantidadDouble != null) {
                         viewModel.añadirGasto(
-                            descripcion = descripcion,
+                            descripcion = descripcion.trim(),
                             cantidad = cantidadDouble,
                             categoria = categoriaSeleccionada,
                             tipo = "GASTO"

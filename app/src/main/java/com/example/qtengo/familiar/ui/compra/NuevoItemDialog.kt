@@ -8,32 +8,31 @@ import androidx.compose.ui.graphics.Color
 
 @Composable
 fun NuevoItemDialog(
-    onConfirm: (String, String, String) -> Unit, // nombre, cantidad, precio
+    onConfirm: (nombre: String, cantidad: String, precio: Double) -> Unit,  // FIX WARN — precio es Double
     onDismiss: () -> Unit
 ) {
     var nombre by remember { mutableStateOf("") }
     var cantidad by remember { mutableStateOf("") }
-    var precio by remember { mutableStateOf("") }
+    var precioTexto by remember { mutableStateOf("") }  // texto del campo
     var errorCantidad by remember { mutableStateOf(false) }
     var errorPrecio by remember { mutableStateOf(false) }
 
+    fun resetear() {
+        nombre = ""; cantidad = ""; precioTexto = ""
+        errorCantidad = false; errorPrecio = false
+    }
+
     AlertDialog(
-        onDismissRequest = {
-            onDismiss()
-            nombre = ""; cantidad = ""; precio = ""
-            errorCantidad = false; errorPrecio = false
-        },
+        onDismissRequest = { onDismiss(); resetear() },
         title = { Text("Añadir producto") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Nombre
                 OutlinedTextField(
                     value = nombre,
                     onValueChange = { nombre = it },
                     label = { Text("Nombre del producto") },
                     singleLine = true
                 )
-                // Cantidad
                 OutlinedTextField(
                     value = cantidad,
                     onValueChange = {
@@ -47,39 +46,38 @@ fun NuevoItemDialog(
                         if (errorCantidad) Text("La cantidad no puede ser negativa", color = Color.Red)
                     }
                 )
-                // Precio
                 OutlinedTextField(
-                    value = precio,
-                    onValueChange = {
-                        precio = it
-                        errorPrecio = it.toDoubleOrNull()?.let { v -> v < 0 } ?: false
+                    value = precioTexto,
+                    onValueChange = { input ->
+                        // FIX WARN — normalizamos coma europea a punto antes de validar
+                        precioTexto = input
+                        val normalizado = input.replace(",", ".")
+                        errorPrecio = normalizado.toDoubleOrNull()?.let { it < 0 } ?: (input.isNotBlank())
                     },
                     label = { Text("Precio (€)") },
                     singleLine = true,
                     isError = errorPrecio,
                     supportingText = {
-                        if (errorPrecio) Text("El precio no puede ser negativo", color = Color.Red)
+                        if (errorPrecio) Text("Introduce un precio válido y no negativo", color = Color.Red)
                     }
                 )
             }
         },
         confirmButton = {
             TextButton(onClick = {
-                val cantidadValida = cantidad.toIntOrNull()?.let { it >= 0 } ?: true
-                val precioValido = precio.toDoubleOrNull()?.let { it >= 0 } ?: true
+                val cantidadValida = cantidad.isBlank() || (cantidad.toIntOrNull()?.let { it >= 0 } ?: false)
+                // FIX WARN — parseamos con normalización de coma europea
+                val precioDouble = precioTexto.replace(",", ".").toDoubleOrNull() ?: 0.0
+                val precioValido = precioTexto.isBlank() || precioDouble >= 0.0
+
                 if (nombre.isNotBlank() && cantidadValida && precioValido) {
-                    onConfirm(nombre, cantidad, precio)
-                    nombre = ""; cantidad = ""; precio = ""
-                    errorCantidad = false; errorPrecio = false
+                    onConfirm(nombre.trim(), cantidad, precioDouble)
+                    resetear()
                 }
             }) { Text("Añadir") }
         },
         dismissButton = {
-            TextButton(onClick = {
-                onDismiss()
-                nombre = ""; cantidad = ""; precio = ""
-                errorCantidad = false; errorPrecio = false
-            }) { Text("Cancelar") }
+            TextButton(onClick = { onDismiss(); resetear() }) { Text("Cancelar") }
         }
     )
 }

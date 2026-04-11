@@ -13,7 +13,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun RegisterScreen(
-    onRegistroExitoso: (uid: String, perfil: String) -> Unit,
+    onRegistroExitoso: (uid: String, perfiles: List<String>) -> Unit,
     onIrALogin: () -> Unit,
     authViewModel: AuthViewModel = viewModel()
 ) {
@@ -21,7 +21,9 @@ fun RegisterScreen(
     var apellidos by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var perfilSeleccionado by remember { mutableStateOf("") }
+
+    // Multiselección — usamos un Set mutable para los perfiles marcados
+    val perfilesSeleccionados = remember { mutableStateSetOf<String>() }
 
     var errorNombre by remember { mutableStateOf("") }
     var errorApellidos by remember { mutableStateOf("") }
@@ -30,13 +32,13 @@ fun RegisterScreen(
     var errorPerfil by remember { mutableStateOf("") }
 
     val authState by authViewModel.authState.collectAsState()
-    val perfiles = listOf("Familiar", "Restauración", "Pyme")
+    val perfilesDisponibles = listOf("Familiar", "Restauración", "Pyme")
 
-    // Navegar cuando el registro sea exitoso
     LaunchedEffect(authState) {
         if (authState is AuthState.Success) {
             val success = authState as AuthState.Success
-            onRegistroExitoso(success.uid, success.perfil)
+            onRegistroExitoso(success.uid, success.perfiles)
+            authViewModel.reset()
         }
     }
 
@@ -60,7 +62,10 @@ fun RegisterScreen(
             },
             label = { Text("Nombre") },
             isError = errorNombre.isNotEmpty(),
-            supportingText = { if (errorNombre.isNotEmpty()) Text(errorNombre, color = MaterialTheme.colorScheme.error) },
+            supportingText = {
+                if (errorNombre.isNotEmpty())
+                    Text(errorNombre, color = MaterialTheme.colorScheme.error)
+            },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -74,7 +79,10 @@ fun RegisterScreen(
             },
             label = { Text("Apellidos") },
             isError = errorApellidos.isNotEmpty(),
-            supportingText = { if (errorApellidos.isNotEmpty()) Text(errorApellidos, color = MaterialTheme.colorScheme.error) },
+            supportingText = {
+                if (errorApellidos.isNotEmpty())
+                    Text(errorApellidos, color = MaterialTheme.colorScheme.error)
+            },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -88,7 +96,10 @@ fun RegisterScreen(
             },
             label = { Text("Email") },
             isError = errorEmail.isNotEmpty(),
-            supportingText = { if (errorEmail.isNotEmpty()) Text(errorEmail, color = MaterialTheme.colorScheme.error) },
+            supportingText = {
+                if (errorEmail.isNotEmpty())
+                    Text(errorEmail, color = MaterialTheme.colorScheme.error)
+            },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -103,7 +114,10 @@ fun RegisterScreen(
             label = { Text("Contraseña") },
             visualTransformation = PasswordVisualTransformation(),
             isError = errorPassword.isNotEmpty(),
-            supportingText = { if (errorPassword.isNotEmpty()) Text(errorPassword, color = MaterialTheme.colorScheme.error) },
+            supportingText = {
+                if (errorPassword.isNotEmpty())
+                    Text(errorPassword, color = MaterialTheme.colorScheme.error)
+            },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -115,35 +129,49 @@ fun RegisterScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
-        Text("Selecciona tu perfil", style = MaterialTheme.typography.bodyLarge)
+        // Sección de selección múltiple de perfiles
+        Text(
+            text = "Selecciona tus perfiles",
+            style = MaterialTheme.typography.bodyLarge
+        )
+        Text(
+            text = "Puedes elegir más de uno",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        perfiles.forEach { perfil ->
+        perfilesDisponibles.forEach { perfil ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                RadioButton(
-                    selected = perfilSeleccionado == perfil,
-                    onClick = {
-                        perfilSeleccionado = perfil
+                Checkbox(
+                    checked = perfil in perfilesSeleccionados,
+                    onCheckedChange = { marcado ->
+                        if (marcado) perfilesSeleccionados.add(perfil)
+                        else perfilesSeleccionados.remove(perfil)
                         errorPerfil = ""
                     }
                 )
-                Text(perfil)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(perfil, style = MaterialTheme.typography.bodyMedium)
             }
         }
 
         if (errorPerfil.isNotEmpty()) {
-            Text(errorPerfil, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            Text(
+                text = errorPerfil,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Mostrar error de Firebase si lo hay
         if (authState is AuthState.Error) {
             Text(
                 text = (authState as AuthState.Error).mensaje,
@@ -152,25 +180,33 @@ fun RegisterScreen(
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        // Botón con loading
         Button(
             onClick = {
                 var valido = true
 
-                if (nombre.trim().isEmpty()) { errorNombre = "El nombre no puede estar vacío"; valido = false }
-                if (apellidos.trim().isEmpty()) { errorApellidos = "Los apellidos no pueden estar vacíos"; valido = false }
-                if (email.trim().isEmpty()) { errorEmail = "El email no puede estar vacío"; valido = false }
-                if (password.trim().isEmpty()) { errorPassword = "La contraseña no puede estar vacía"; valido = false }
-                if (perfilSeleccionado.isEmpty()) { errorPerfil = "Debes seleccionar un perfil"; valido = false }
+                if (nombre.trim().isEmpty()) {
+                    errorNombre = "El nombre no puede estar vacío"; valido = false
+                }
+                if (apellidos.trim().isEmpty()) {
+                    errorApellidos = "Los apellidos no pueden estar vacíos"; valido = false
+                }
+                if (email.trim().isEmpty()) {
+                    errorEmail = "El email no puede estar vacío"; valido = false
+                }
+                if (password.trim().isEmpty()) {
+                    errorPassword = "La contraseña no puede estar vacía"; valido = false
+                }
+                if (perfilesSeleccionados.isEmpty()) {
+                    errorPerfil = "Debes seleccionar al menos un perfil"; valido = false
+                }
 
                 if (valido) {
                     authViewModel.registrar(
                         nombre = nombre.trim(),
-                        apellido1 = apellidos.trim(),
-                        apellido2 = "",
+                        apellidos = apellidos.trim(),
                         email = email.trim(),
                         password = password.trim(),
-                        perfil = perfilSeleccionado
+                        perfiles = perfilesSeleccionados.toList()
                     )
                 }
             },

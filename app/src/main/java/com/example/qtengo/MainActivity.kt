@@ -9,13 +9,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.example.qtengo.login.ui.LoginScreen
 import com.example.qtengo.login.ui.RegisterScreen
@@ -40,11 +39,16 @@ import com.example.qtengo.core.ui.theme.QtengoTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
+import com.example.qtengo.restauracion.ui.carta.CartaScreen
+import com.example.qtengo.restauracion.ui.stock.StockCocinaScreen
+import com.example.qtengo.restauracion.ui.reservas.ReservasScreen
+import com.example.qtengo.restauracion.ui.proveedores.ProveedoresRestauracionScreen
+
 
 /**
  * Actividad principal que gestiona la navegación de la aplicación Q-Tengo.
  * Organizada por perfiles: Familiar, Pyme y Restauración.
- * Autenticación y sesión gestionadas por Firebase Auth.
+ * Un usuario puede tener varios perfiles activos — se elige uno al iniciar sesión.
  */
 class MainActivity : ComponentActivity() {
 
@@ -59,14 +63,20 @@ class MainActivity : ComponentActivity() {
             QtengoTheme {
                 var showSplash by remember { mutableStateOf(true) }
                 var uid by remember { mutableStateOf<String?>(null) }
-                var perfil by remember { mutableStateOf<String?>(null) }
+
+                // Lista completa de perfiles del usuario
+                var perfiles by remember { mutableStateOf<List<String>>(emptyList()) }
+
+                // Perfil activo en esta sesión (el que el usuario seleccionó)
+                var perfilActivo by remember { mutableStateOf<String?>(null) }
+
                 var mostrarRegistro by remember { mutableStateOf(false) }
                 var currentScreen by remember { mutableStateOf("") }
                 val selectedShoppingList = remember { mutableStateOf<ShoppingList?>(null) }
                 var showAddGasto by remember { mutableStateOf(false) }
                 var showAddInventario by remember { mutableStateOf(false) }
 
-                // --- Solicitud de permiso de notificaciones (Android 13+) ---
+                // --- Permiso de notificaciones (Android 13+) ---
                 val permisoConcedido = remember {
                     mutableStateOf(
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -74,29 +84,21 @@ class MainActivity : ComponentActivity() {
                                 this,
                                 Manifest.permission.POST_NOTIFICATIONS
                             ) == PackageManager.PERMISSION_GRANTED
-                        } else {
-                            true // En versiones anteriores no hace falta pedir permiso
-                        }
+                        } else true
                     )
                 }
-
                 val launcher = rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.RequestPermission()
-                ) { concedido ->
-                    permisoConcedido.value = concedido
-                }
+                ) { concedido -> permisoConcedido.value = concedido }
 
-                // Pedir permiso al arrancar si es Android 13+ y no está concedido
                 LaunchedEffect(Unit) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                        !permisoConcedido.value
-                    ) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !permisoConcedido.value) {
                         launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
                     }
                 }
-                // --- Fin solicitud permiso ---
+                // --- Fin permiso ---
 
-                // Comprobar sesión activa en Firebase Auth al arrancar
+                // Comprobar sesión activa al arrancar
                 LaunchedEffect(Unit) {
                     val currentUser = auth.currentUser
                     if (currentUser != null) {
@@ -105,31 +107,46 @@ class MainActivity : ComponentActivity() {
                                 .document(currentUser.uid)
                                 .get()
                                 .await()
-                            val perfilRecuperado = doc.getString("perfil")
 
-                            if (perfilRecuperado != null) {
-                                // ✅ Perfil encontrado, continuar sesión
+                            // Compatibilidad: leer "perfiles" (nuevo) o "perfil" (antiguo)
+                            @Suppress("UNCHECKED_CAST")
+                            val perfilesRecuperados: List<String> = when {
+                                doc.get("perfiles") != null ->
+                                    (doc.get("perfiles") as? List<String>) ?: emptyList()
+                                doc.getString("perfil") != null ->
+                                    listOf(doc.getString("perfil")!!)
+                                else -> emptyList()
+                            }
+
+                            if (perfilesRecuperados.isNotEmpty()) {
                                 uid = currentUser.uid
-                                perfil = perfilRecuperado
+                                perfiles = perfilesRecuperados
+                                // Si solo tiene un perfil, lo activamos directamente
+                                if (perfilesRecuperados.size == 1) {
+                                    perfilActivo = perfilesRecuperados.first()
+                                }
                             } else {
-                                // ❌ Documento sin perfil, forzar login
                                 auth.signOut()
                             }
                         } catch (e: Exception) {
-                            // ❌ Error de red, forzar login
                             auth.signOut()
                         }
                     }
                     showSplash = false
                 }
 
-                /**
-                 * Cierra la sesión del usuario y vuelve al login
-                 */
+                // Cierra sesión y resetea todo el estado
                 fun cerrarSesion() {
                     auth.signOut()
                     uid = null
-                    perfil = null
+                    perfiles = emptyList()
+                    perfilActivo = null
+                    currentScreen = ""
+                }
+
+                // Vuelve al selector de perfil sin cerrar sesión
+                fun cambiarPerfil() {
+                    perfilActivo = null
                     currentScreen = ""
                 }
 
@@ -139,39 +156,46 @@ class MainActivity : ComponentActivity() {
                     )
 
                     uid == null && mostrarRegistro -> RegisterScreen(
-                        onRegistroExitoso = { nuevoUid, nuevoPerfil ->
+                        onRegistroExitoso = { nuevoUid, nuevosPerfiles ->
                             uid = nuevoUid
-                            perfil = nuevoPerfil
+                            perfiles = nuevosPerfiles
                             mostrarRegistro = false
+                            // Si solo tiene un perfil, lo activamos directamente
+                            if (nuevosPerfiles.size == 1) {
+                                perfilActivo = nuevosPerfiles.first()
+                            }
                         },
                         onIrALogin = { mostrarRegistro = false }
                     )
 
                     uid == null -> LoginScreen(
-                        onLoginExitoso = { nuevoUid, nuevoPerfil ->
+                        onLoginExitoso = { nuevoUid, nuevosPerfiles ->
                             uid = nuevoUid
-                            perfil = nuevoPerfil
+                            perfiles = nuevosPerfiles
+                            // Si solo tiene un perfil, lo activamos directamente
+                            if (nuevosPerfiles.size == 1) {
+                                perfilActivo = nuevosPerfiles.first()
+                            }
                         },
                         onIrARegistro = { mostrarRegistro = true }
                     )
 
-                    // Mientras carga el perfil desde Firestore
-                    perfil == null -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
-                        }
+                    // Usuario autenticado pero aún sin elegir perfil activo → mostrar selector
+                    uid != null && perfilActivo == null -> {
+                        SelectorPerfilScreen(
+                            perfiles = perfiles,
+                            onPerfilSeleccionado = { perfilActivo = it },
+                            onCerrarSesion = { cerrarSesion() }
+                        )
                     }
 
                     // --- PERFIL FAMILIAR ---
-                    perfil == "Familiar" -> {
+                    perfilActivo == "Familiar" -> {
                         when (currentScreen) {
                             "" -> FamiliarHomeScreen(
                                 onMenuSelected = { currentScreen = it },
                                 onLogout = { cerrarSesion() },
-                                onChangeProfile = { /* TODO */ }
+                                onChangeProfile = { cambiarPerfil() }
                             )
                             "Lista de la compra" -> {
                                 if (selectedShoppingList.value == null) {
@@ -220,80 +244,140 @@ class MainActivity : ComponentActivity() {
                     }
 
                     // --- PERFIL PYME ---
-                    perfil == "Pyme" -> {
+                    perfilActivo == "Pyme" -> {
                         when (currentScreen) {
                             "" -> PymeHomeScreen(
                                 onMenuSelected = { currentScreen = it },
                                 onLogout = { cerrarSesion() },
-                                onChangeProfile = { /* TODO */ }
+                                onChangeProfile = { cambiarPerfil() }
                             )
                             "Productos / Stock" -> ProductScreen(
                                 profile = "PYME",
                                 onBack = { currentScreen = "" },
                                 onLogout = { cerrarSesion() },
-                                onChangeProfile = { /* TODO */ }
+                                onChangeProfile = { cambiarPerfil() }
                             )
                             "Gastos e ingresos" -> PymeFinanceScreen(
                                 onBack = { currentScreen = "" },
                                 onLogout = { cerrarSesion() },
-                                onChangeProfile = { /* TODO */ }
+                                onChangeProfile = { cambiarPerfil() }
                             )
                             "Proveedores" -> SupplierScreen(
                                 profile = "PYME",
                                 onBack = { currentScreen = "" },
                                 onLogout = { cerrarSesion() },
-                                onChangeProfile = { /* TODO */ }
+                                onChangeProfile = { cambiarPerfil() }
                             )
                             "Empleados" -> EmployeeScreen(
                                 profile = "PYME",
                                 onBack = { currentScreen = "" },
                                 onLogout = { cerrarSesion() },
-                                onChangeProfile = { /* TODO */ }
+                                onChangeProfile = { cambiarPerfil() }
                             )
                             "Agenda de Tareas" -> TaskScreen(
                                 onBack = { currentScreen = "" },
                                 onLogout = { cerrarSesion() },
-                                onChangeProfile = { /* TODO */ }
+                                onChangeProfile = { cambiarPerfil() }
                             )
                             else -> currentScreen = ""
                         }
                     }
 
                     // --- PERFIL RESTAURACIÓN ---
-                    perfil == "Restauración" -> {
+                    perfilActivo == "Restauración" -> {
                         when (currentScreen) {
                             "" -> RestauracionHomeScreen(
                                 onMenuSelected = { currentScreen = it },
                                 onLogout = { cerrarSesion() },
-                                onChangeProfile = { /* TODO */ }
+                                onChangeProfile = { cambiarPerfil() }
                             )
-                            "Stock de cocina" -> ProductScreen(
-                                profile = "Restauración",
+                            "Carta / Menú del día" -> CartaScreen(
                                 onBack = { currentScreen = "" },
                                 onLogout = { cerrarSesion() },
-                                onChangeProfile = { /* TODO */ }
+                                onChangeProfile = { cambiarPerfil() }
                             )
-                            "Proveedores" -> SupplierScreen(
-                                profile = "Restauración",
+                            "Stock de cocina" -> StockCocinaScreen(
                                 onBack = { currentScreen = "" },
                                 onLogout = { cerrarSesion() },
-                                onChangeProfile = { /* TODO */ }
+                                onChangeProfile = { cambiarPerfil() }
+                            )
+                            "Reservas" -> ReservasScreen(
+                                onBack = { currentScreen = "" },
+                                onLogout = { cerrarSesion() },
+                                onChangeProfile = { cambiarPerfil() }
+                            )
+                            "Proveedores" -> ProveedoresRestauracionScreen(
+                                onBack = { currentScreen = "" },
+                                onLogout = { cerrarSesion() },
+                                onChangeProfile = { cambiarPerfil() }
                             )
                             else -> currentScreen = ""
                         }
                     }
 
-                    // Perfil no reconocido
                     else -> {
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("Perfil no reconocido: $perfil")
+                            Text("Perfil no reconocido: $perfilActivo")
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Pantalla de selección de perfil activo.
+ * Se muestra cuando el usuario tiene más de un perfil registrado.
+ * Si solo tiene uno, se salta automáticamente desde MainActivity.
+ */
+@Composable
+fun SelectorPerfilScreen(
+    perfiles: List<String>,
+    onPerfilSeleccionado: (String) -> Unit,
+    onCerrarSesion: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "¿Con qué perfil quieres entrar?",
+            style = MaterialTheme.typography.headlineSmall
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "Puedes cambiar de perfil en cualquier momento desde el menú",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        perfiles.forEach { perfil ->
+            Button(
+                onClick = { onPerfilSeleccionado(perfil) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+            ) {
+                Text(perfil, style = MaterialTheme.typography.bodyLarge)
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        TextButton(onClick = onCerrarSesion) {
+            Text("Cerrar sesión")
         }
     }
 }
