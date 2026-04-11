@@ -6,5 +6,6 @@ data class FinanceMovement(
     val amount: Double = 0.0,
     val type: String = "", // "INGRESO" o "GASTO"
     val date: String = "",
-    val profile: String = "" // "PYME"
+    val profile: String = "", // "PYME"
+    val notes: String = ""
 )

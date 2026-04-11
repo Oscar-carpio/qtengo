@@ -1,42 +1,68 @@
 package com.example.qtengo.pyme.ui.finanzas
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.asLiveData
-import androidx.lifecycle.map
-import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.*
 import com.example.qtengo.core.domain.models.FinanceMovement
 import com.example.qtengo.core.data.repositories.FinanceRepository
+import com.example.qtengo.core.data.repositories.EmployeeRepository
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel que gestiona la lógica financiera (ingresos y gastos) del módulo Pyme usando Firebase.
+ * ViewModel que gestiona la lógica financiera de la empresa.
  */
 class FinanzasViewModel(
-    private val repository: FinanceRepository = FinanceRepository()
+    private val repository: FinanceRepository = FinanceRepository(),
+    private val employeeRepository: EmployeeRepository = EmployeeRepository()
 ) : ViewModel() {
 
-    val movements: LiveData<List<FinanceMovement>> = repository.getAllFlow("PYME").asLiveData()
+    /**
+     * Lista reactiva de movimientos financieros. Combina registros de caja con gastos de personal.
+     */
+    val movements: LiveData<List<FinanceMovement>> = combine(
+        repository.getAllFlow("PYME"),
+        employeeRepository.getByProfileFlow("PYME")
+    ) { finanzas, empleados ->
+        val movimientosNominas = empleados.map { emp ->
+            FinanceMovement(
+                id = "nomina_${emp.id}",
+                concept = "Nómina de ${emp.name}",
+                amount = emp.salary,
+                type = "GASTO",
+                date = "Mensual",
+                profile = "PYME",
+                notes = "Cargo generado automáticamente por empleado activo"
+            )
+        }
+        finanzas + movimientosNominas
+    }.asLiveData(viewModelScope.coroutineContext) // Usar el contexto del ViewModel para mayor estabilidad en tests
 
+    /**
+     * Calcula el total de entradas registradas.
+     */
     val totalIngresos: LiveData<Double?> = movements.map { list ->
-        list.filter { it.type == "INGRESO" }.sumOf { it.amount }.takeIf { it > 0.0 }
-    }
-
-    val totalGastos: LiveData<Double?> = movements.map { list ->
-        list.filter { it.type == "GASTO" }.sumOf { it.amount }.takeIf { it > 0.0 }
+        list.filter { it.type == "INGRESO" }.sumOf { it.amount }
     }
 
     /**
-     * Registra un nuevo movimiento financiero.
+     * Calcula el total de salidas registradas.
+     */
+    val totalGastos: LiveData<Double?> = movements.map { list ->
+        list.filter { it.type == "GASTO" }.sumOf { it.amount }
+    }
+
+    /**
+     * Registra un nuevo movimiento en Firebase.
      */
     fun insert(movement: FinanceMovement) = viewModelScope.launch {
         repository.insert(movement)
     }
 
     /**
-     * Elimina un movimiento financiero existente.
+     * Elimina un movimiento si no es una nómina autogenerada.
      */
     fun delete(movementId: String) = viewModelScope.launch {
-        repository.delete(movementId)
+        if (!movementId.startsWith("nomina_")) {
+            repository.delete(movementId)
+        }
     }
 }

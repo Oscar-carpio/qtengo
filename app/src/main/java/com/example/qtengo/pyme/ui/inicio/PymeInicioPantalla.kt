@@ -51,9 +51,23 @@ fun PymeInicioPantalla(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            DashboardCard(title = "Productos", value = productCount.toString(), color = Color(0xFF1565C0), modifier = Modifier.weight(1f))
-            DashboardCard(title = "Stock bajo", value = lowStockProducts.size.toString(), color = Color(0xFFD32F2F), modifier = Modifier.weight(1f))
+        // Marcadores reducidos y con navegación
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), 
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            DashboardCard(
+                title = "Productos", 
+                value = productCount.toString(), 
+                color = Color(0xFF1565C0), 
+                modifier = Modifier.weight(1f).clickable { onMenuSelected("Productos / Stock") }
+            )
+            DashboardCard(
+                title = "Stock bajo", 
+                value = lowStockProducts.size.toString(), 
+                color = Color(0xFFD32F2F), 
+                modifier = Modifier.weight(1f).clickable { onMenuSelected("Productos / Stock") }
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -76,13 +90,17 @@ fun PymeInicioPantalla(
 @Composable
 fun DashboardCard(title: String, value: String, color: Color, modifier: Modifier = Modifier) {
     Card(
-        modifier = modifier.height(100.dp),
+        modifier = modifier.height(80.dp), // Tamaño reducido de 100dp a 80dp
         colors = CardDefaults.cardColors(containerColor = color),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = value, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            Text(text = title, color = Color.White)
+        Column(
+            modifier = Modifier.fillMaxSize(), 
+            verticalArrangement = Arrangement.Center, 
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(text = value, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White) // Fuente reducida de 28 a 24
+            Text(text = title, color = Color.White, fontSize = 12.sp)
         }
     }
 }
