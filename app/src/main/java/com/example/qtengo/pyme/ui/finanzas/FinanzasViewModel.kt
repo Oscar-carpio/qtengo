@@ -1,3 +1,10 @@
+/**
+ * ViewModel responsable de la lógica financiera del perfil PYME.
+ * 
+ * Gestiona el flujo de caja combinando los registros manuales de movimientos
+ * con las nóminas generadas automáticamente a partir de la lista de empleados.
+ * Proporciona estados reactivos para los totales de ingresos, gastos y la lista unificada.
+ */
 package com.example.qtengo.pyme.ui.finanzas
 
 import androidx.lifecycle.*
@@ -7,21 +14,16 @@ import com.example.qtengo.core.data.repositories.EmployeeRepository
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
-/**
- * ViewModel encargado de la gestión financiera del perfil PYME.
- * 
- * Centraliza la lógica de ingresos, gastos y la generación automática de
- * movimientos basados en la plantilla de empleados (nóminas).
- */
 class FinanzasViewModel(
     private val repository: FinanceRepository = FinanceRepository(),
     private val employeeRepository: EmployeeRepository = EmployeeRepository()
 ) : ViewModel() {
 
     /**
-     * Flujo unificado de movimientos financieros.
-     * Combina los registros manuales de Firestore con las nóminas generadas dinámicamente
-     * a partir de los salarios de los empleados activos.
+     * Lista unificada de movimientos financieros.
+     * Combina en tiempo real:
+     * 1. Movimientos manuales desde [FinanceRepository].
+     * 2. Nóminas calculadas desde [EmployeeRepository].
      */
     val movements: LiveData<List<FinanceMovement>> = combine(
         repository.getAllFlow("PYME"),
@@ -42,31 +44,31 @@ class FinanzasViewModel(
     }.asLiveData(viewModelScope.coroutineContext)
 
     /**
-     * Suma total de todos los movimientos marcados como 'INGRESO'.
+     * Cálculo reactivo del sumatorio de todos los ingresos.
      */
     val totalIngresos: LiveData<Double?> = movements.map { list ->
         list.filter { it.type == "INGRESO" }.sumOf { it.amount }
     }
 
     /**
-     * Suma total de todos los movimientos marcados como 'GASTO', incluyendo nóminas.
+     * Cálculo reactivo del sumatorio de todos los gastos (incluyendo nóminas).
      */
     val totalGastos: LiveData<Double?> = movements.map { list ->
         list.filter { it.type == "GASTO" }.sumOf { it.amount }
     }
 
     /**
-     * Registra un nuevo movimiento financiero (Ingreso o Gasto).
-     * @param movement Datos del movimiento a persistir.
+     * Inserta un nuevo movimiento (Ingreso o Gasto) en el repositorio.
+     * @param movement El objeto con los datos del movimiento.
      */
     fun insert(movement: FinanceMovement) = viewModelScope.launch {
         repository.insert(movement)
     }
 
     /**
-     * Elimina un registro financiero por su ID.
-     * Bloquea la eliminación de nóminas autogeneradas para mantener la integridad contable.
-     * @param movementId Identificador único del documento en Firestore.
+     * Elimina un movimiento si no es una nómina autogenerada.
+     * Las nóminas están protegidas para evitar inconsistencias con la lista de empleados.
+     * @param movementId El identificador del documento a borrar.
      */
     fun delete(movementId: String) = viewModelScope.launch {
         if (!movementId.startsWith("nomina_")) {

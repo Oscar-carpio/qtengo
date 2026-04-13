@@ -1,3 +1,6 @@
+/**
+ * Pantalla de Gestión Financiera corregida con el sistema de ordenación unificado.
+ */
 package com.example.qtengo.pyme.ui.finanzas
 
 import androidx.compose.foundation.layout.*
@@ -14,19 +17,18 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.qtengo.core.domain.models.FinanceMovement
 import com.example.qtengo.core.ui.components.QtengoTopBar
+import com.example.qtengo.pyme.ui.filtros.FiltrosFinanzas
 import com.example.qtengo.pyme.ui.finanzas.components.BalanceCard
 import com.example.qtengo.pyme.ui.finanzas.components.DialogoFinance
-import com.example.qtengo.pyme.ui.finanzas.components.FiltrosFinanzas
 import com.example.qtengo.pyme.ui.finanzas.components.MovementRow
 import java.text.SimpleDateFormat
 import java.util.*
 
-/**
- * Pantalla de Gestión Financiera.
- * 
- * Permite visualizar el flujo de caja, registrar nuevos movimientos (ingresos/gastos)
- * y consultar el balance neto de la empresa en el perfil PYME.
- */
+sealed class FinanceDialogState {
+    data class Add(val tipo: String) : FinanceDialogState()
+    data class Edit(val movement: FinanceMovement) : FinanceDialogState()
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FinanzasPantalla(
@@ -35,20 +37,31 @@ fun FinanzasPantalla(
     onLogout: () -> Unit,
     onChangeProfile: () -> Unit
 ) {
-    // Estados observados desde el ViewModel
     val movements by viewModel.movements.observeAsState(emptyList())
     val ingresos by viewModel.totalIngresos.observeAsState(0.0)
     val gastos by viewModel.totalGastos.observeAsState(0.0)
 
-    // Estados locales para la UI
     var searchQuery by remember { mutableStateOf("") }
-    var showAddDialog by remember { mutableStateOf(false) }
-    var tipoSeleccionado by remember { mutableStateOf("INGRESO") }
-    var movementToEdit by remember { mutableStateOf<FinanceMovement?>(null) }
+    var sortBy by remember { mutableStateOf("Nombre") }
+    var isAscending by remember { mutableStateOf(true) }
+    
+    var activeDialog by remember { mutableStateOf<FinanceDialogState?>(null) }
 
-    // Filtrado en tiempo real basado en la búsqueda del usuario
-    val filteredMovements = movements.filter {
-        it.concept.contains(searchQuery, ignoreCase = true)
+    val filteredAndSortedMovements = remember(movements, searchQuery, sortBy, isAscending) {
+        movements
+            .filter { it.concept.contains(searchQuery, ignoreCase = true) }
+            .sortedWith { m1, m2 ->
+                val res = when (sortBy) {
+                    "Nombre" -> m1.concept.compareTo(m2.concept, ignoreCase = true)
+                    "Cantidad" -> {
+                        val v1 = if (m1.type == "GASTO") -m1.amount else m1.amount
+                        val v2 = if (m2.type == "GASTO") -m2.amount else m2.amount
+                        v1.compareTo(v2)
+                    }
+                    else -> 0
+                }
+                if (isAscending) res else -res
+            }
     }
 
     val neto = (ingresos ?: 0.0) - (gastos ?: 0.0)
@@ -61,13 +74,14 @@ fun FinanzasPantalla(
             onChangeProfile = onChangeProfile
         )
 
-        // Panel de búsqueda superior
         FiltrosFinanzas(
             searchQuery = searchQuery,
-            onSearchChange = { searchQuery = it }
+            onSearchChange = { searchQuery = it },
+            sortBy = sortBy,
+            isAscending = isAscending,
+            onSortChange = { s, a -> sortBy = s; isAscending = a }
         )
 
-        // Tarjetas de balance (Ingresos, Gastos y Neto)
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween
@@ -77,13 +91,12 @@ fun FinanzasPantalla(
             BalanceCard("Neto", neto, Color(0xFF1565C0), esNeto = true)
         }
 
-        // Acciones rápidas para añadir movimientos
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Button(
-                onClick = { tipoSeleccionado = "INGRESO"; showAddDialog = true },
+                onClick = { activeDialog = FinanceDialogState.Add("INGRESO") },
                 modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
             ) {
@@ -91,7 +104,7 @@ fun FinanzasPantalla(
                 Text("Ingreso")
             }
             Button(
-                onClick = { tipoSeleccionado = "GASTO"; showAddDialog = true },
+                onClick = { activeDialog = FinanceDialogState.Add("GASTO") },
                 modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC62828))
             ) {
@@ -100,47 +113,47 @@ fun FinanzasPantalla(
             }
         }
 
-        // Listado de movimientos registrados
         LazyColumn(modifier = Modifier.padding(horizontal = 16.dp).weight(1f)) {
-            items(filteredMovements) { movement ->
+            items(filteredAndSortedMovements) { movement ->
                 MovementRow(
-                    movement, 
+                    movement,
                     onDelete = { viewModel.delete(movement.id) },
-                    onEdit = { movementToEdit = movement }
+                    onEdit = { activeDialog = FinanceDialogState.Edit(movement) }
                 )
             }
         }
     }
 
-    // Lógica de diálogos para inserción y edición
-    if (showAddDialog) {
-        DialogoFinance(
-            tipo = tipoSeleccionado,
-            onDismiss = { showAddDialog = false },
-            onConfirm = { concept, details, amount ->
-                val date = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
-                viewModel.insert(FinanceMovement(
-                    concept = concept,
-                    amount = amount,
-                    type = tipoSeleccionado,
-                    date = date,
-                    profile = "PYME",
-                    notes = details
-                ))
-                showAddDialog = false
-            }
-        )
-    }
-
-    movementToEdit?.let { movement ->
-        DialogoFinance(
-            tipo = movement.type,
-            movement = movement,
-            onDismiss = { movementToEdit = null },
-            onConfirm = { concept, details, amount ->
-                viewModel.insert(movement.copy(concept = concept, amount = amount, notes = details))
-                movementToEdit = null
-            }
-        )
+    when (val state = activeDialog) {
+        is FinanceDialogState.Add -> {
+            DialogoFinance(
+                tipo = state.tipo,
+                onDismiss = { activeDialog = null },
+                onConfirm = { concept, details, amount ->
+                    val date = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
+                    viewModel.insert(FinanceMovement(
+                        concept = concept,
+                        amount = amount,
+                        type = state.tipo,
+                        date = date,
+                        profile = "PYME",
+                        notes = details
+                    ))
+                    activeDialog = null
+                }
+            )
+        }
+        is FinanceDialogState.Edit -> {
+            DialogoFinance(
+                tipo = state.movement.type,
+                movement = state.movement,
+                onDismiss = { activeDialog = null },
+                onConfirm = { concept, details, amount ->
+                    viewModel.insert(state.movement.copy(concept = concept, amount = amount, notes = details))
+                    activeDialog = null
+                }
+            )
+        }
+        null -> {}
     }
 }

@@ -1,3 +1,10 @@
+/**
+ * Pantalla principal de la Agenda de Tareas.
+ * 
+ * Gestiona el ciclo de vida de la UI para la visualización, filtrado y gestión 
+ * de tareas diarias. Permite organizar el flujo de trabajo mediante prioridades 
+ * y estados de cumplimiento.
+ */
 package com.example.qtengo.pyme.ui.tareas
 
 import androidx.compose.foundation.background
@@ -18,7 +25,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.qtengo.core.domain.models.Task
 import com.example.qtengo.core.ui.components.QtengoTopBar
 import com.example.qtengo.core.ui.screens.TaskViewModel
-import com.example.qtengo.pyme.ui.components.FiltrosTareasPyme
+import com.example.qtengo.pyme.ui.filtros.FiltrosTareas
 import com.example.qtengo.pyme.ui.tareas.components.DialogoTarea
 import com.example.qtengo.pyme.ui.tareas.components.ResumenCardTareas
 import com.example.qtengo.pyme.ui.tareas.components.TareaCardItem
@@ -26,7 +33,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * Pantalla principal de la Agenda de Tareas para PYME.
+ * Composable principal del módulo de Tareas.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,6 +54,8 @@ fun TareasPantalla(
     var dateFilterEnabled by remember { mutableStateOf(false) }
     var filterMonth by remember { mutableIntStateOf(0) }
     var filterYear by remember { mutableStateOf("Todos") }
+    var sortBy by remember { mutableStateOf("Nombre") }
+    var isAscending by remember { mutableStateOf(true) }
     
     val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
     val today = Date()
@@ -76,18 +85,27 @@ fun TareasPantalla(
         }
 
         matchesSearch && matchesStatus && matchesDate && matchesCreation
-    }.sortedWith(
-        compareBy<Task> { it.date.isEmpty() }
-        .thenBy { 
-            when (it.priority.uppercase()) {
-                "ALTA" -> 0
-                "MEDIA" -> 1
-                "BAJA" -> 2
-                else -> 3
-            }
+    }.sortedWith { t1, t2 ->
+        val res = when (sortBy) {
+            "Nombre" -> t1.title.compareTo(t2.title, ignoreCase = true)
+            else -> 0
         }
-        .thenByDescending { it.createdAt }
-    )
+        if (res != 0) {
+            if (isAscending) res else -res
+        } else {
+            compareBy<Task> { it.date.isEmpty() }
+                .thenBy { 
+                    when (it.priority.uppercase()) {
+                        "ALTA" -> 0
+                        "MEDIA" -> 1
+                        "BAJA" -> 2
+                        else -> 3
+                    }
+                }
+                .thenByDescending { it.createdAt }
+                .compare(t1, t2)
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize().background(Color(0xFFF4F7FB))) {
         QtengoTopBar(
@@ -97,7 +115,8 @@ fun TareasPantalla(
             onChangeProfile = onChangeProfile
         )
 
-        FiltrosTareasPyme(
+        // Panel de búsqueda y filtrado unificado en la carpeta filtros/
+        FiltrosTareas(
             searchQuery = searchQuery,
             onSearchChange = { searchQuery = it },
             statusFilter = statusFilter,
@@ -109,7 +128,10 @@ fun TareasPantalla(
             dateFilterEnabled = dateFilterEnabled,
             onDateFilterToggle = { dateFilterEnabled = it },
             selectedDate = selectedDate,
-            onDateSelected = { viewModel.selectDate(it) }
+            onDateSelected = { viewModel.selectDate(it) },
+            sortBy = sortBy,
+            isAscending = isAscending,
+            onSortChange = { s, a -> sortBy = s; isAscending = a }
         )
 
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {

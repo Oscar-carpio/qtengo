@@ -1,3 +1,12 @@
+/**
+ * Componente visual para representar a un empleado individual.
+ * 
+ * Proporciona una vista detallada pero compacta con:
+ * - Icono de identificación.
+ * - Datos laborales (Nombre, Cargo, Salario).
+ * - Acciones rápidas para llamar o enviar email.
+ * - Visualización de notas adicionales.
+ */
 package com.example.qtengo.pyme.ui.empleados.components
 
 import androidx.compose.foundation.background
@@ -19,6 +28,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.qtengo.core.domain.models.Employee
 
+/**
+ * Composable que renderiza la tarjeta del empleado.
+ * 
+ * @param employee Modelo de datos del empleado.
+ * @param onCall Acción al pulsar sobre el teléfono.
+ * @param onEmail Acción al pulsar sobre el correo.
+ * @param onEdit Acción para abrir el diálogo de edición.
+ * @param onDelete Acción para eliminar al empleado.
+ */
 @Composable
 fun EmpleadoCardItem(
     employee: Employee, 
@@ -35,12 +53,15 @@ fun EmpleadoCardItem(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                // Avatar/Icono profesional
                 Surface(modifier = Modifier.size(50.dp), shape = CircleShape, color = Color(0xFFE3F2FD)) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(Icons.Default.AssignmentInd, null, tint = Color(0xFF1565C0))
                     }
                 }
                 Spacer(Modifier.width(16.dp))
+                
+                // Información laboral principal
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = employee.name, 
@@ -64,6 +85,8 @@ fun EmpleadoCardItem(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+                
+                // Acciones de gestión (Editar/Borrar)
                 Row {
                     IconButton(onClick = onEdit) { Icon(Icons.Default.Edit, null, tint = Color.Gray) }
                     IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, null, tint = Color.Red) }
@@ -71,6 +94,8 @@ fun EmpleadoCardItem(
             }
             
             Spacer(Modifier.height(8.dp))
+            
+            // Sección de contacto y detalles adicionales
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 if (employee.phone.isNotBlank()) {
                     Row(
@@ -81,7 +106,7 @@ fun EmpleadoCardItem(
                     ) {
                         Icon(Icons.Default.Phone, null, modifier = Modifier.size(14.dp), tint = Color(0xFF1565C0))
                         Spacer(Modifier.width(6.dp))
-                        Text(text = employee.phone, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color(0xFF1565C0))
+                        Text(text = employee.phone, fontSize = 12.sp, color = Color(0xFF1565C0))
                     }
                 }
                 if (employee.email.isNotBlank()) {
@@ -93,7 +118,7 @@ fun EmpleadoCardItem(
                     ) {
                         Icon(Icons.Default.Email, null, modifier = Modifier.size(14.dp), tint = Color(0xFF1565C0))
                         Spacer(Modifier.width(6.dp))
-                        Text(text = employee.email, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color(0xFF1565C0))
+                        Text(text = employee.email, fontSize = 12.sp, color = Color(0xFF1565C0))
                     }
                 }
                 if (employee.details.isNotBlank()) {

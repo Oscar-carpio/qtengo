@@ -1,12 +1,6 @@
-/**
- * Fila representativa de un movimiento financiero individual.
- * Muestra el concepto, fecha, importe (con distintivo visual para ingresos/gastos)
- * y proporciona acciones de edición y borrado para registros no automáticos.
- */
 package com.example.qtengo.pyme.ui.finanzas.components
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -21,45 +15,54 @@ import androidx.compose.ui.unit.sp
 import com.example.qtengo.core.domain.models.FinanceMovement
 
 @Composable
-fun MovementRow(movement: FinanceMovement, onDelete: () -> Unit, onEdit: () -> Unit) {
-    val isEditable = !movement.id.startsWith("nomina_")
-    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(movement.concept, fontWeight = FontWeight.Bold)
-                    Text(movement.date, fontSize = 12.sp, color = Color.Gray)
-                }
-                
-                Surface(
-                    color = if (movement.type == "INGRESO") Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.width(90.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(vertical = 6.dp)) {
-                        Text(
-                            text = "${if (movement.type == "INGRESO") "+" else "-"}${movement.amount}€",
-                            color = if (movement.type == "INGRESO") Color(0xFF2E7D32) else Color(0xFFC62828),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
-                        )
-                    }
-                }
-
-                if (isEditable) {
-                    Row {
-                        IconButton(onClick = onEdit) { Icon(Icons.Default.Edit, null, tint = Color.Gray, modifier = Modifier.size(20.dp)) }
-                        IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, null, tint = Color.LightGray, modifier = Modifier.size(20.dp)) }
-                    }
-                }
+fun MovementRow(
+    movement: FinanceMovement,
+    onDelete: () -> Unit,
+    onEdit: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = movement.concept,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+                Text(
+                    text = movement.date,
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
             }
-            if (movement.notes.isNotBlank()) {
-                Spacer(Modifier.height(4.dp))
-                Text(text = movement.notes, fontSize = 12.sp, color = Color.Gray)
+            
+            val amountColor = if (movement.type == "INGRESO") Color(0xFF2E7D32) else Color(0xFFC62828)
+            val prefix = if (movement.type == "INGRESO") "+" else "-"
+            
+            Text(
+                text = "$prefix${movement.amount}€",
+                color = amountColor,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+
+            Row {
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, contentDescription = "Editar", tint = Color.Gray)
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = Color(0xFFC62828))
+                }
             }
         }
     }

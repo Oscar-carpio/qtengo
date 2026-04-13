@@ -1,9 +1,7 @@
 /**
- * Componente de filtrado avanzado para la Agenda de Tareas.
- * Proporciona búsqueda por texto, filtrado por estado (Pendientes/Realizadas),
- * filtrado por fecha de creación (Mes/Año) y por fecha programada.
+ * Filtros avanzados para la Agenda de Tareas.
  */
-package com.example.qtengo.pyme.ui.tareas.components
+package com.example.qtengo.pyme.ui.filtros
 
 import android.app.DatePickerDialog
 import androidx.compose.foundation.layout.*
@@ -18,7 +16,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.qtengo.pyme.ui.components.PymeFilterCard
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -36,7 +33,10 @@ fun FiltrosTareas(
     dateFilterEnabled: Boolean,
     onDateFilterToggle: (Boolean) -> Unit,
     selectedDate: String,
-    onDateSelected: (String) -> Unit
+    onDateSelected: (String) -> Unit,
+    sortBy: String,
+    isAscending: Boolean,
+    onSortChange: (String, Boolean) -> Unit
 ) {
     var monthExpanded by remember { mutableStateOf(false) }
     var yearExpanded by remember { mutableStateOf(false) }
@@ -49,12 +49,19 @@ fun FiltrosTareas(
     val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
 
     PymeFilterCard(
-        title = "Buscador y Filtros",
+        title = "Buscador y Filtros de Tareas",
         searchQuery = searchQuery,
         onSearchChange = onSearchChange
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            // Estado
+            // Ordenación común integrada con el estilo del Inventario
+            OrderButtons(
+                sortBy = sortBy,
+                isAscending = isAscending,
+                onSortChange = onSortChange,
+                showAmount = false
+            )
+
             Column {
                 Text("Estado:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -68,10 +75,9 @@ fun FiltrosTareas(
                 }
             }
 
-            // Creación
             Column {
-                Text("Filtrar por creación (Mes / Año):", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                Text("Filtrar por creación:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ExposedDropdownMenuBox(
                         expanded = monthExpanded,
                         onExpandedChange = { monthExpanded = it },
@@ -83,8 +89,7 @@ fun FiltrosTareas(
                             readOnly = true,
                             label = { Text("Mes") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = monthExpanded) },
-                            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable),
-                            textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp)
+                            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
                         )
                         ExposedDropdownMenu(expanded = monthExpanded, onDismissRequest = { monthExpanded = false }) {
                             months.forEachIndexed { index, name ->
@@ -107,8 +112,7 @@ fun FiltrosTareas(
                             readOnly = true,
                             label = { Text("Año") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = yearExpanded) },
-                            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable),
-                            textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp)
+                            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
                         )
                         ExposedDropdownMenu(expanded = yearExpanded, onDismissRequest = { yearExpanded = false }) {
                             yearsList.forEach { year ->
@@ -122,30 +126,21 @@ fun FiltrosTareas(
                 }
             }
 
-            // Fecha Programada
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = dateFilterEnabled, onCheckedChange = onDateFilterToggle)
                     Text("Filtrar por Fecha Programada", fontSize = 14.sp)
                 }
-                
                 if (dateFilterEnabled) {
                     Button(
                         onClick = {
                             val calendar = Calendar.getInstance()
-                            DatePickerDialog(
-                                context,
-                                { _, year, month, dayOfMonth ->
-                                    calendar.set(year, month, dayOfMonth)
-                                    onDateSelected(sdf.format(calendar.time))
-                                },
-                                calendar.get(Calendar.YEAR),
-                                calendar.get(Calendar.MONTH),
-                                calendar.get(Calendar.DAY_OF_MONTH)
-                            ).show()
+                            DatePickerDialog(context, { _, y, m, d ->
+                                calendar.set(y, m, d)
+                                onDateSelected(sdf.format(calendar.time))
+                            }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show()
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A3A6B))
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(Icons.Default.CalendarMonth, null)
                         Spacer(Modifier.width(8.dp))
