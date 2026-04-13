@@ -17,7 +17,10 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * ViewModel para gestionar las tareas y la actividad diaria usando Firebase.
+ * ViewModel que centraliza la actividad diaria y la agenda de tareas.
+ * 
+ * Gestiona la sincronización entre tareas programadas, movimientos financieros
+ * y cambios de stock para una fecha específica en el perfil PYME.
  */
 class TaskViewModel(
     private val taskRepository: TaskRepository = TaskRepository(),
@@ -26,32 +29,36 @@ class TaskViewModel(
 ) : ViewModel() {
 
     private val _selectedDate = MutableLiveData<String>()
+    
+    /**
+     * Fecha actualmente seleccionada en el calendario (formato dd/MM/yyyy).
+     */
     val selectedDate: LiveData<String> = _selectedDate
 
-    private val _creationFilter = MutableLiveData<String>("Todas") // "Todas", "Mes", "Año"
+    private val _creationFilter = MutableLiveData<String>("Todas")
     val creationFilter: LiveData<String> = _creationFilter
 
     /**
-     * Lista de todas las tareas del perfil para filtrar por creación si es necesario.
+     * Lista reactiva de todas las tareas asociadas al perfil PYME.
      */
     val allTasks: LiveData<List<Task>> = taskRepository.getByProfileFlow("PYME").asLiveData()
 
     /**
-     * Lista de tareas para la fecha seleccionada (programadas).
+     * Tareas programadas para la fecha seleccionada en [_selectedDate].
      */
     val tasksByDate: LiveData<List<Task>> = _selectedDate.switchMap { date ->
         taskRepository.getByDate(date, "PYME").asLiveData()
     }
 
     /**
-     * Lista de movimientos financieros para la fecha seleccionada.
+     * Flujo de caja registrado para la fecha seleccionada.
      */
     val financeByDate: LiveData<List<FinanceMovement>> = _selectedDate.switchMap { date ->
         financeRepository.getByDate(date, "PYME").asLiveData()
     }
 
     /**
-     * Lista de movimientos de stock para la fecha seleccionada.
+     * Historial de movimientos de inventario ocurridos en la fecha seleccionada.
      */
     val stockByDate: LiveData<List<StockMovement>> = _selectedDate.switchMap { date ->
         stockRepository.getMovementsByDate(date, "PYME").asLiveData()
@@ -63,18 +70,24 @@ class TaskViewModel(
     }
 
     /**
-     * Cambia la fecha de consulta en el calendario.
+     * Actualiza la fecha de consulta global para los flujos de tareas, finanzas y stock.
+     * @param date Nueva fecha seleccionada.
      */
     fun selectDate(date: String) {
         _selectedDate.value = date
     }
 
+    /**
+     * Establece el filtro de visualización según la fecha de creación.
+     * @param filter Valores posibles: "Todas", "Mes", "Año".
+     */
     fun setCreationFilter(filter: String) {
         _creationFilter.value = filter
     }
 
     /**
-     * Inserta una nueva tarea vinculada a una fecha y perfil específicos.
+     * Crea y persiste una nueva tarea.
+     * Automáticamente asigna la fecha de creación actual y el perfil PYME.
      */
     fun insertTask(title: String, description: String, priority: String, date: String) = viewModelScope.launch {
         val today = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
@@ -90,14 +103,14 @@ class TaskViewModel(
     }
 
     /**
-     * Actualiza el estado o contenido de una tarea.
+     * Actualiza una tarea existente (título, descripción, prioridad o estado de completado).
      */
     fun updateTask(task: Task) = viewModelScope.launch {
         taskRepository.update(task)
     }
 
     /**
-     * Elimina una tarea de la base de datos.
+     * Elimina permanentemente una tarea de la base de datos.
      */
     fun deleteTask(task: Task) = viewModelScope.launch {
         taskRepository.delete(task.id)
