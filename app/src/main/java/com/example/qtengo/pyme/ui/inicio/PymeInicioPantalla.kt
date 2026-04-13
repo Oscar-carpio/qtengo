@@ -1,3 +1,9 @@
+/**
+ * Pantalla principal del Panel Pyme.
+ * Actúa como hub central de navegación proporcionando acceso a las secciones de:
+ * Stock, Finanzas, Proveedores, Empleados y Tareas.
+ * También muestra indicadores clave (KPIs) de inventario.
+ */
 package com.example.qtengo.pyme.ui.inicio
 
 import androidx.compose.foundation.background
@@ -20,6 +26,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.qtengo.core.ui.components.QtengoTopBar
 import com.example.qtengo.pyme.ui.productos.ProductosViewModel
 
+/**
+ * Define una opción del menú principal con su estética y destino.
+ */
 data class PymeMenuOption(val title: String, val icon: String, val color: Color)
 
 @Composable
@@ -51,7 +60,7 @@ fun PymeInicioPantalla(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Marcadores reducidos y con navegación
+        // Marcadores de indicadores clave (Dashboard)
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), 
             horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -74,6 +83,7 @@ fun PymeInicioPantalla(
 
         Text(text = "Gestión", fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 16.dp))
 
+        // Cuadrícula de navegación a sub-módulos
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             contentPadding = PaddingValues(16.dp),
@@ -87,10 +97,13 @@ fun PymeInicioPantalla(
     }
 }
 
+/**
+ * Tarjeta informativa para mostrar métricas clave en la cabecera.
+ */
 @Composable
 fun DashboardCard(title: String, value: String, color: Color, modifier: Modifier = Modifier) {
     Card(
-        modifier = modifier.height(80.dp), // Tamaño reducido de 100dp a 80dp
+        modifier = modifier.height(80.dp),
         colors = CardDefaults.cardColors(containerColor = color),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -99,12 +112,15 @@ fun DashboardCard(title: String, value: String, color: Color, modifier: Modifier
             verticalArrangement = Arrangement.Center, 
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = value, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White) // Fuente reducida de 28 a 24
+            Text(text = value, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
             Text(text = title, color = Color.White, fontSize = 12.sp)
         }
     }
 }
 
+/**
+ * Tarjeta interactiva del menú de navegación.
+ */
 @Composable
 fun MenuCard(option: PymeMenuOption, onClick: () -> Unit) {
     Card(

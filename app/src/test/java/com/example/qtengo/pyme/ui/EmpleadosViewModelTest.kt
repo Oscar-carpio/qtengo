@@ -24,6 +24,12 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
+/**
+ * Tests unitarios para [EmpleadosViewModel].
+ * 
+ * Verifica la gestión de la plantilla de empleados y la integración automática
+ * con el módulo de finanzas para el registro de gastos de nómina.
+ */
 @ExperimentalCoroutinesApi
 class EmpleadosViewModelTest {
 
@@ -38,6 +44,7 @@ class EmpleadosViewModelTest {
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
+        // Mock inicial para evitar que el switchMap falle al iniciar el ViewModel
         every { employeeRepository.getByProfileFlow(any()) } returns flowOf(emptyList())
         viewModel = EmpleadosViewModel(employeeRepository, financeRepository)
     }
@@ -47,21 +54,34 @@ class EmpleadosViewModelTest {
         Dispatchers.resetMain()
     }
 
+    /**
+     * Valida que al cambiar el perfil de trabajo, se actualice reactivamente
+     * la lista de empleados mostrada en la UI.
+     */
     @Test
     fun `loadProfile actualiza la lista de empleados`() = runTest {
+        // Given
         val listaMock = listOf(Employee(id = "1", name = "Test", profile = "PYME"))
         every { employeeRepository.getByProfileFlow("PYME") } returns flowOf(listaMock)
 
         val observer = mockk<Observer<List<Employee>>>(relaxed = true)
         viewModel.employees.observeForever(observer)
 
+        // When
         viewModel.loadProfile("PYME")
         advanceUntilIdle()
 
+        // Then
         verify { observer.onChanged(listaMock) }
-        Assert.assertEquals(listaMock, viewModel.employees.value)
+        Assert.assertEquals("La lista de empleados debe coincidir con el mock", listaMock, viewModel.employees.value)
+        
+        viewModel.employees.removeObserver(observer)
     }
 
+    /**
+     * Prueba crítica: Verifica que al insertar un empleado no solo se guarde su ficha,
+     * sino que también se genere un asiento contable automático en finanzas.
+     */
     @Test
     fun `insert registra empleado y genera un movimiento de gasto en finanzas`() = runTest {
         // Given
@@ -72,11 +92,10 @@ class EmpleadosViewModelTest {
         viewModel.insert(nombre, "Gerente", salario, "123", "test@test.com", "Notas")
         advanceUntilIdle()
 
-        // Then
-        // Verificar inserción de empleado
+        // Then: Verificar persistencia del empleado
         coVerify { employeeRepository.insert(match { it.name == nombre && it.salary == salario }) }
 
-        // Verificar inserción automática de nómina en finanzas
+        // Then: Verificar generación automática de nómina en Finanzas
         coVerify {
             financeRepository.insert(match {
                 it.concept == "Nómina de $nombre" &&
@@ -86,6 +105,9 @@ class EmpleadosViewModelTest {
         }
     }
 
+    /**
+     * Asegura que la orden de eliminación se propague correctamente al repositorio.
+     */
     @Test
     fun `delete llama al repositorio de empleados`() = runTest {
         val id = "emp_123"
@@ -94,6 +116,9 @@ class EmpleadosViewModelTest {
         coVerify { employeeRepository.delete(id) }
     }
 
+    /**
+     * Asegura que la actualización de datos del empleado se propague correctamente al repositorio.
+     */
     @Test
     fun `update llama al repositorio de empleados`() = runTest {
         val emp = Employee(id = "1", name = "Editado")

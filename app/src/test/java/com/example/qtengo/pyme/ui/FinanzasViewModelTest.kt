@@ -22,6 +22,12 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
+/**
+ * Tests unitarios para [FinanzasViewModel].
+ * 
+ * Valida la lógica de negocio financiera, incluyendo la combinación de movimientos manuales
+ * con nóminas autogeneradas y las reglas de protección de datos.
+ */
 @ExperimentalCoroutinesApi
 class FinanzasViewModelTest {
 
@@ -32,7 +38,7 @@ class FinanzasViewModelTest {
     private val financeRepository = mockk<FinanceRepository>(relaxed = true)
     private val employeeRepository = mockk<EmployeeRepository>(relaxed = true)
 
-    // Usamos MutableStateFlow para tener control total sobre las emisiones en el test
+    // Flujos mutables para simular la base de datos de forma reactiva
     private val financeFlow = MutableStateFlow<List<FinanceMovement>>(emptyList())
     private val employeeFlow = MutableStateFlow<List<Employee>>(emptyList())
 
@@ -42,6 +48,7 @@ class FinanzasViewModelTest {
     fun setup() {
         Dispatchers.setMain(testDispatcher)
 
+        // Configuración de los mocks para devolver los flujos controlados
         every { financeRepository.getAllFlow("PYME") } returns financeFlow
         every { employeeRepository.getByProfileFlow("PYME") } returns employeeFlow
 
@@ -53,36 +60,38 @@ class FinanzasViewModelTest {
         Dispatchers.resetMain()
     }
 
+    /**
+     * Verifica que el ViewModel combine en una única lista los movimientos de caja
+     * y las nóminas generadas a partir de la tabla de empleados.
+     */
     @Test
     fun `movements combina correctamente movimientos de caja y nominas de empleados`() = runTest {
         // Given
         val movimientosCaja = listOf(
-            FinanceMovement(
-                id = "1",
-                concept = "Venta",
-                amount = 100.0,
-                type = "INGRESO",
-                profile = "PYME"
-            )
+            FinanceMovement(id = "1", concept = "Venta", amount = 100.0, type = "INGRESO", profile = "PYME")
         )
         val empleados = listOf(
             Employee(id = "emp1", name = "Juan", salary = 1200.0, profile = "PYME")
         )
 
-        // Activamos observación
+        // Activamos el LiveData para que empiece a recolectar los flujos
         viewModel.movements.observeForever {}
 
-        // When: Emitimos nuevos valores
+        // When: Simulamos la llegada de datos desde el repositorio
         financeFlow.value = movimientosCaja
         employeeFlow.value = empleados
 
         // Then
         val result = viewModel.movements.value
-        Assert.assertEquals(2, result?.size)
-        Assert.assertEquals("Venta", result?.get(0)?.concept)
-        Assert.assertEquals("Nómina de Juan", result?.get(1)?.concept)
+        Assert.assertEquals("Debe haber 2 movimientos en total", 2, result?.size)
+        Assert.assertEquals("El primer movimiento debe ser la venta", "Venta", result?.get(0)?.concept)
+        Assert.assertEquals("El segundo debe ser la nómina autogenerada", "Nómina de Juan", result?.get(1)?.concept)
     }
 
+    /**
+     * Valida que el cálculo de ingresos y gastos totales sea preciso y sume correctamente
+     * las nóminas como gastos adicionales.
+     */
     @Test
     fun `calculo de totalIngresos y totalGastos es correcto`() = runTest {
         // Given
@@ -91,10 +100,10 @@ class FinanzasViewModelTest {
             FinanceMovement(amount = 200.0, type = "GASTO")
         )
         val empleados = listOf(
-            Employee(salary = 1000.0)
+            Employee(salary = 1000.0) // Esto genera un gasto de nómina de 1000.0
         )
 
-        // Observar para activar transformaciones
+        // Observar transformaciones para activarlas
         viewModel.totalIngresos.observeForever {}
         viewModel.totalGastos.observeForever {}
 
@@ -103,10 +112,13 @@ class FinanzasViewModelTest {
         employeeFlow.value = empleados
 
         // Then
-        Assert.assertEquals(500.0, viewModel.totalIngresos.value ?: 0.0, 0.1)
-        Assert.assertEquals(1200.0, viewModel.totalGastos.value ?: 0.0, 0.1)
+        Assert.assertEquals("Total ingresos debe ser 500", 500.0, viewModel.totalIngresos.value ?: 0.0, 0.1)
+        Assert.assertEquals("Total gastos debe ser 1200 (200 + 1000)", 1200.0, viewModel.totalGastos.value ?: 0.0, 0.1)
     }
 
+    /**
+     * Comprueba que la inserción de un nuevo movimiento se delegue correctamente al repositorio.
+     */
     @Test
     fun `insert llama al repositorio de finanzas`() = runTest {
         val movement = FinanceMovement(concept = "Test", amount = 10.0, type = "INGRESO")
@@ -114,12 +126,19 @@ class FinanzasViewModelTest {
         coVerify { financeRepository.insert(movement) }
     }
 
+    /**
+     * Verifica la regla de integridad: los movimientos que empiezan por 'nomina_' 
+     * NO deben poder ser borrados manualmente.
+     */
     @Test
     fun `delete no elimina si el ID empieza por nomina_`() = runTest {
         viewModel.delete("nomina_123")
         coVerify(exactly = 0) { financeRepository.delete(any()) }
     }
 
+    /**
+     * Asegura que los movimientos normales sí puedan ser eliminados.
+     */
     @Test
     fun `delete elimina si el ID NO empieza por nomina_`() = runTest {
         viewModel.delete("mov_123")
