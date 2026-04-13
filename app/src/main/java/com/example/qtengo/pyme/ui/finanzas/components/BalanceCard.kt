@@ -1,8 +1,3 @@
-/**
- * Tarjeta de resumen de balance financiero.
- * Muestra métricas como Ingresos Totales, Gastos Totales o Saldo Neto.
- * Permite personalizar el color según el tipo de métrica para mejorar la lectura rápida.
- */
 package com.example.qtengo.pyme.ui.finanzas.components
 
 import androidx.compose.foundation.layout.*
@@ -15,6 +10,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+/**
+ * Tarjeta de resumen de balance financiero (Ingresos, Gastos, Neto).
+ */
 @Composable
 fun BalanceCard(titulo: String, cantidad: Double, colorFondo: Color, esNeto: Boolean = false) {
     val colorTextoCantidad = if (esNeto && cantidad < 0) Color(0xFFFF5252) else Color.White

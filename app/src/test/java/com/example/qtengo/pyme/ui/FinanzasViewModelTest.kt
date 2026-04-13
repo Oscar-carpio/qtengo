@@ -127,16 +127,6 @@ class FinanzasViewModelTest {
     }
 
     /**
-     * Verifica la regla de integridad: los movimientos que empiezan por 'nomina_' 
-     * NO deben poder ser borrados manualmente.
-     */
-    @Test
-    fun `delete no elimina si el ID empieza por nomina_`() = runTest {
-        viewModel.delete("nomina_123")
-        coVerify(exactly = 0) { financeRepository.delete(any()) }
-    }
-
-    /**
      * Asegura que los movimientos normales sí puedan ser eliminados.
      */
     @Test

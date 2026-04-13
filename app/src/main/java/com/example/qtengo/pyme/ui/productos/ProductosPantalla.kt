@@ -1,3 +1,12 @@
+/**
+ * Pantalla de Control de Stock e Inventario.
+ * 
+ * Interfaz central para la gestión del almacén. Permite:
+ * - Consultar existencias en tiempo real.
+ * - Identificar productos críticos (Stock Bajo).
+ * - Realizar ajustes rápidos de inventario.
+ * - Filtrar por criterios múltiples (unidades, nombre, stock).
+ */
 package com.example.qtengo.pyme.ui.productos
 
 import androidx.compose.foundation.background
@@ -16,11 +25,20 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.qtengo.core.domain.models.Product
 import com.example.qtengo.core.ui.components.QtengoTopBar
-import com.example.qtengo.pyme.ui.components.FiltrosProductosPyme
+import com.example.qtengo.pyme.ui.filtros.FiltrosProductos
 import com.example.qtengo.pyme.ui.productos.components.DialogoEdicionProducto
 import com.example.qtengo.pyme.ui.productos.components.ProductoItemCard
 import com.example.qtengo.pyme.ui.productos.components.SummaryCard
 
+/**
+ * Composable principal del almacén Pyme.
+ * 
+ * @param profile Perfil de usuario activo.
+ * @param viewModel Lógica de persistencia y movimientos de almacén.
+ * @param onBack Navegación hacia atrás.
+ * @param onLogout Cierre de sesión.
+ * @param onChangeProfile Cambio de perfil.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductosPantalla(
@@ -30,33 +48,43 @@ fun ProductosPantalla(
     onLogout: () -> Unit,
     onChangeProfile: () -> Unit
 ) {
+    // Datos observados desde el ViewModel
     val products by viewModel.products.observeAsState(emptyList())
     val lowStockProducts by viewModel.lowStockProducts.observeAsState(emptyList())
 
+    // Estados de control de la UI (Búsqueda, Filtros y Diálogos)
     var searchQuery by remember { mutableStateOf("") }
     var filterByLowStock by remember { mutableStateOf(false) }
-    var sortBy by remember { mutableStateOf("Nombre") }
+    var sortBy by remember { mutableStateOf("Registro") }
     var isAscending by remember { mutableStateOf(true) }
     var selectedUnits by remember { mutableStateOf(setOf<String>()) }
     var showAddDialog by remember { mutableStateOf(false) }
     var productToEdit by remember { mutableStateOf<Product?>(null) }
 
-    val filteredProducts = products.filter {
-        it.name.contains(searchQuery, ignoreCase = true) &&
-                (!filterByLowStock || it.quantity <= it.minStock) &&
-                (selectedUnits.isEmpty() || selectedUnits.contains(it.unit))
-    }.sortedWith { p1, p2 ->
-        val low1 = p1.quantity <= p1.minStock
-        val low2 = p2.quantity <= p2.minStock
-        if (low1 != low2) {
-            if (low1) -1 else 1
+    // Procesamiento dinámico de la lista (Filtrado y Ordenación)
+    val filteredProducts = products.filter { product ->
+        val matchesSearch = product.name.contains(searchQuery, ignoreCase = true)
+        val matchesLowStock = !filterByLowStock || product.quantity <= product.minStock
+        val matchesUnits = selectedUnits.isEmpty() || selectedUnits.contains(product.unit)
+        matchesSearch && matchesLowStock && matchesUnits
+    }.let { list ->
+        if (sortBy == "Registro") {
+            if (isAscending) list else list.reversed()
         } else {
-            val res = when (sortBy) {
-                "Nombre" -> p1.name.compareTo(p2.name, ignoreCase = true)
-                "Cantidad" -> p1.quantity.compareTo(p2.quantity)
-                else -> 0
+            list.sortedWith { p1, p2 ->
+                val low1 = p1.quantity <= p1.minStock
+                val low2 = p2.quantity <= p2.minStock
+                if (low1 != low2) {
+                    if (low1) -1 else 1
+                } else {
+                    val res = when (sortBy) {
+                        "Nombre" -> p1.name.compareTo(p2.name, ignoreCase = true)
+                        "Cantidad" -> p1.quantity.compareTo(p2.quantity)
+                        else -> 0
+                    }
+                    if (isAscending) res else -res
+                }
             }
-            if (isAscending) res else -res
         }
     }
 
@@ -74,8 +102,8 @@ fun ProductosPantalla(
             onChangeProfile = onChangeProfile
         )
 
-        // Filtro Unificado de Productos
-        FiltrosProductosPyme(
+        // Filtros unificados importados desde la carpeta filtros/
+        FiltrosProductos(
             searchQuery = searchQuery,
             onSearchChange = { searchQuery = it },
             sortBy = sortBy,
@@ -87,11 +115,13 @@ fun ProductosPantalla(
             onLowStockChange = { filterByLowStock = it }
         )
 
+        // Indicadores rápidos de estado del almacén
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             SummaryCard(title = "Total Items", value = "${products.size}", color = Color(0xFF1A3A6B), modifier = Modifier.weight(1f))
             SummaryCard(title = "Stock Bajo", value = "${lowStockProducts.size}", color = if (lowStockProducts.isNotEmpty()) Color(0xFFD32F2F) else Color(0xFF388E3C), modifier = Modifier.weight(1f))
         }
 
+        // Listado de productos
         LazyColumn(
             modifier = Modifier.weight(1f).padding(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -106,6 +136,7 @@ fun ProductosPantalla(
             }
         }
 
+        // Botón para añadir nuevo producto
         Button(
             onClick = { showAddDialog = true },
             modifier = Modifier.fillMaxWidth().padding(16.dp),
