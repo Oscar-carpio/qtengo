@@ -1,6 +1,7 @@
 package com.example.qtengo.ui.restauracion
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
+import com.example.qtengo.data.model.restauracion.RestauracionProducto
 import com.example.qtengo.ui.restauracion.inventario.InventarioRestauracionViewModel
 import com.example.qtengo.ui.restauracion.menu.MenuViewModel
 import com.example.qtengo.ui.restauracion.reservas.ReservasViewModel
