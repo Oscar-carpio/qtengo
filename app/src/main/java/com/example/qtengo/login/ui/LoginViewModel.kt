@@ -29,7 +29,6 @@ class AuthViewModel : ViewModel() {
         perfiles: List<String>
     ) {
         viewModelScope.launch {
-            // Validaciones locales antes de llamar a Firebase
             if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
                 _authState.value = AuthState.Error("El email no tiene un formato válido")
                 return@launch
@@ -57,13 +56,12 @@ class AuthViewModel : ViewModel() {
                 val resultado = auth.createUserWithEmailAndPassword(email, password).await()
                 val uid = resultado.user?.uid ?: throw Exception("Error al obtener UID")
 
-                // Guardamos perfiles como array — compatible con multiselección
                 val userData = mapOf(
                     "uid" to uid,
                     "nombre" to nombre,
                     "apellidos" to apellidos,
                     "email" to email,
-                    "perfiles" to perfiles          // List<String> → array en Firestore
+                    "perfiles" to perfiles
                 )
                 firestore.collection("usuarios").document(uid).set(userData).await()
 
@@ -100,7 +98,6 @@ class AuthViewModel : ViewModel() {
                 val doc = firestore.collection("usuarios").document(uid).get().await()
                 val nombre = doc.getString("nombre") ?: ""
 
-                // Compatibilidad hacia atrás: leer "perfiles" (nuevo) o "perfil" (antiguo)
                 @Suppress("UNCHECKED_CAST")
                 val perfiles: List<String> = when {
                     doc.get("perfiles") != null ->
@@ -136,16 +133,32 @@ class AuthViewModel : ViewModel() {
     fun reset() {
         _authState.value = AuthState.Idle
     }
+
+    /* fun recuperarPassword(email: String) {
+        viewModelScope.launch {
+            if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                _authState.value = AuthState.Error("Introduce un email válido primero")
+                return@launch
+            }
+            try {
+                auth.sendPasswordResetEmail(email).await()
+                _authState.value = AuthState.RecuperacionEnviada
+            } catch (e: Exception) {
+                _authState.value = AuthState.Error("No se pudo enviar el correo")
+            }
+        }
+    }*/
 }
 
 sealed class AuthState {
     object Idle : AuthState()
     object Loading : AuthState()
+    // object RecuperacionEnviada : AuthState()
     data class Success(
         val uid: String,
         val nombre: String,
         val email: String,
-        val perfiles: List<String>      // antes era perfil: String
+        val perfiles: List<String>
     ) : AuthState()
     data class Error(val mensaje: String) : AuthState()
 }

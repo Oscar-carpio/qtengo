@@ -1,28 +1,52 @@
 package com.example.qtengo.login.ui
 
+import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun LoginScreen(
-    onLoginExitoso: (uid: String, perfiles: List<String>) -> Unit,  // antes: perfil: String
+    onLoginExitoso: (uid: String, perfiles: List<String>) -> Unit,
     onIrARegistro: () -> Unit,
     authViewModel: AuthViewModel = viewModel()
 ) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("qtengo_prefs", Context.MODE_PRIVATE) }
+
+    // Cargamos lo guardado al abrir la pantalla
+    var email by remember { mutableStateOf(prefs.getString("ultimo_email", "") ?: "") }
+    var password by remember { mutableStateOf(prefs.getString("password_guardada", "") ?: "") }
+    var recordarPassword by remember { mutableStateOf(prefs.getBoolean("recordar_password", false)) }
 
     val authState by authViewModel.authState.collectAsState()
 
     LaunchedEffect(authState) {
         if (authState is AuthState.Success) {
             val success = authState as AuthState.Success
+
+            // Siempre guardamos el email
+            prefs.edit().putString("ultimo_email", email).apply()
+
+            // Guardamos o borramos la contraseña según el checkbox
+            if (recordarPassword) {
+                prefs.edit()
+                    .putString("password_guardada", password)
+                    .putBoolean("recordar_password", true)
+                    .apply()
+            } else {
+                prefs.edit()
+                    .remove("password_guardada")
+                    .putBoolean("recordar_password", false)
+                    .apply()
+            }
+
             onLoginExitoso(success.uid, success.perfiles)
             authViewModel.reset()
         }
@@ -56,7 +80,22 @@ fun LoginScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Checkbox "Recordar contraseña"
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Checkbox(
+                checked = recordarPassword,
+                onCheckedChange = { recordarPassword = it }
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("Recordar contraseña", style = MaterialTheme.typography.bodyMedium)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         if (authState is AuthState.Error) {
             Text(
@@ -81,6 +120,21 @@ fun LoginScreen(
                 Text("Entrar")
             }
         }
+
+        /* if (authState is AuthState.RecuperacionEnviada) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "✅ Correo de recuperación enviado. Revisa tu bandeja.",
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.bodySmall
+            )
+        } */
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        /*TextButton(onClick = { authViewModel.recuperarPassword(email) }) {
+            Text("¿Olvidaste tu contraseña?")
+        }*/
 
         Spacer(modifier = Modifier.height(12.dp))
 
