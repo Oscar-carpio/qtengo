@@ -22,7 +22,6 @@ fun RegisterScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
-    // Multiselección — usamos un Set mutable para los perfiles marcados
     val perfilesSeleccionados = remember { mutableStateSetOf<String>() }
 
     var errorNombre by remember { mutableStateOf("") }
@@ -131,7 +130,6 @@ fun RegisterScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Sección de selección múltiple de perfiles
         Text(
             text = "Selecciona tus perfiles",
             style = MaterialTheme.typography.bodyLarge

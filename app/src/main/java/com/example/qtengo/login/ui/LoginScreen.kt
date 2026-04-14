@@ -20,7 +20,6 @@ fun LoginScreen(
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("qtengo_prefs", Context.MODE_PRIVATE) }
 
-    // Cargamos lo guardado al abrir la pantalla
     var email by remember { mutableStateOf(prefs.getString("ultimo_email", "") ?: "") }
     var password by remember { mutableStateOf(prefs.getString("password_guardada", "") ?: "") }
     var recordarPassword by remember { mutableStateOf(prefs.getBoolean("recordar_password", false)) }
