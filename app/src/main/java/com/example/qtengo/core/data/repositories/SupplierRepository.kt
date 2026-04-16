@@ -2,6 +2,7 @@ package com.example.qtengo.core.data.repositories
 
 import android.util.Log
 import com.example.qtengo.core.domain.models.Supplier
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -10,10 +11,16 @@ import kotlinx.coroutines.tasks.await
 
 class SupplierRepository {
     private val firestore = FirebaseFirestore.getInstance()
-    private val collection = firestore.collection("suppliers")
+    private val auth = FirebaseAuth.getInstance()
+
+    // FIX — ruta bajo usuarios/{uid}/suppliers para cumplir las reglas de Firestore
+    private fun collection() = firestore
+        .collection("usuarios")
+        .document(auth.currentUser?.uid ?: "")
+        .collection("suppliers")
 
     fun getByProfileFlow(profile: String): Flow<List<Supplier>> = callbackFlow {
-        val listener = collection
+        val listener = collection()
             .whereEqualTo("profile", profile)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
@@ -31,7 +38,7 @@ class SupplierRepository {
 
     suspend fun insert(supplier: Supplier) {
         try {
-            collection.add(supplier).await()
+            collection().add(supplier).await()
         } catch (e: Exception) {
             Log.e("SupplierRepository", "Error insertando: ${e.message}")
         }
@@ -39,7 +46,7 @@ class SupplierRepository {
 
     suspend fun update(supplier: Supplier) {
         try {
-            collection.document(supplier.id).set(supplier).await()
+            collection().document(supplier.id).set(supplier).await()
         } catch (e: Exception) {
             Log.e("SupplierRepository", "Error actualizando: ${e.message}")
         }
@@ -47,7 +54,7 @@ class SupplierRepository {
 
     suspend fun delete(supplierId: String) {
         try {
-            collection.document(supplierId).delete().await()
+            collection().document(supplierId).delete().await()
         } catch (e: Exception) {
             Log.e("SupplierRepository", "Error eliminando: ${e.message}")
         }

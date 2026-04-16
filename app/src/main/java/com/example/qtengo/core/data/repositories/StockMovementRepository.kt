@@ -1,6 +1,7 @@
 package com.example.qtengo.core.data.repositories
 
 import com.example.qtengo.core.domain.models.StockMovement
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -9,10 +10,16 @@ import kotlinx.coroutines.tasks.await
 
 class StockMovementRepository {
     private val firestore = FirebaseFirestore.getInstance()
-    private val collection = firestore.collection("stock_movements")
+    private val auth = FirebaseAuth.getInstance()
+
+    // FIX — ruta bajo usuarios/{uid}/stock_movements para cumplir las reglas de Firestore
+    private fun collection() = firestore
+        .collection("usuarios")
+        .document(auth.currentUser?.uid ?: "")
+        .collection("stock_movements")
 
     fun getMovementsByDate(date: String, profile: String): Flow<List<StockMovement>> = callbackFlow {
-        val listener = collection
+        val listener = collection()
             .whereEqualTo("date", date)
             .whereEqualTo("profile", profile)
             .addSnapshotListener { snapshot, error ->
@@ -29,6 +36,6 @@ class StockMovementRepository {
     }
 
     suspend fun insert(movement: StockMovement) {
-        collection.add(movement).await()
+        collection().add(movement).await()
     }
 }
