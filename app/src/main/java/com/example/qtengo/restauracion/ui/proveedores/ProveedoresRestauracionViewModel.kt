@@ -5,20 +5,52 @@ import androidx.lifecycle.viewModelScope
 import com.example.qtengo.data.model.restauracion.RestauracionProveedor
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 class ProveedoresRestauracionViewModel : ViewModel() {
 
     private val db = FirebaseFirestore.getInstance()
+    private var proveedoresListener: ListenerRegistration? = null
 
     private val _proveedores = MutableStateFlow<List<RestauracionProveedor>>(emptyList())
     val proveedores: StateFlow<List<RestauracionProveedor>> = _proveedores
 
+    private val _filtro = MutableStateFlow("")
+    val filtro: StateFlow<String> = _filtro
+
+    val proveedoresFiltrados: StateFlow<List<RestauracionProveedor>> =
+        combine(_proveedores, _filtro) { lista, texto ->
+            val filtroLimpio = texto.trim()
+
+            if (filtroLimpio.isBlank()) {
+                lista
+            } else {
+                lista.filter { proveedor ->
+                    proveedor.nombre.contains(filtroLimpio, ignoreCase = true) ||
+                            proveedor.telefono.contains(filtroLimpio, ignoreCase = true) ||
+                            proveedor.email.contains(filtroLimpio, ignoreCase = true) ||
+                            proveedor.direccion.contains(filtroLimpio, ignoreCase = true)
+                }
+            }
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
     private fun proveedoresRef(uid: String) =
         db.collection("usuarios").document(uid).collection("proveedoresRestauracion")
+
+    fun actualizarFiltro(valor: String) {
+        _filtro.value = valor
+    }
 
     fun cargarProveedores() {
         val user = FirebaseAuth.getInstance().currentUser
@@ -28,25 +60,28 @@ class ProveedoresRestauracionViewModel : ViewModel() {
             return
         }
 
-        proveedoresRef(user.uid).addSnapshotListener { snapshot, error ->
-            if (error != null) {
-                println("Error al obtener proveedores: ${error.message}")
-                _proveedores.value = emptyList()
-                return@addSnapshotListener
+        proveedoresListener?.remove()
+
+        proveedoresListener = proveedoresRef(user.uid)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    println("Error al obtener proveedores: ${error.message}")
+                    _proveedores.value = emptyList()
+                    return@addSnapshotListener
+                }
+
+                val result = snapshot?.documents?.map { doc ->
+                    RestauracionProveedor(
+                        id_proveedor = doc.id,
+                        nombre = doc.getString("nombre") ?: "",
+                        direccion = doc.getString("direccion") ?: "",
+                        email = doc.getString("email") ?: "",
+                        telefono = doc.getString("telefono") ?: ""
+                    )
+                } ?: emptyList()
+
+                _proveedores.value = result
             }
-
-            val result = snapshot?.documents?.map { doc ->
-                RestauracionProveedor(
-                    id_proveedor = doc.id,
-                    nombre = doc.getString("nombre") ?: "",
-                    direccion = doc.getString("direccion") ?: "",
-                    email = doc.getString("email") ?: "",
-                    telefono = doc.getString("telefono") ?: ""
-                )
-            } ?: emptyList()
-
-            _proveedores.value = result
-        }
     }
 
     fun agregarProveedor(
@@ -63,16 +98,45 @@ class ProveedoresRestauracionViewModel : ViewModel() {
             }
 
             val data = mapOf(
-                "nombre" to nombre,
-                "telefono" to telefono,
-                "email" to email,
-                "direccion" to direccion
+                "nombre" to nombre.trim(),
+                "telefono" to telefono.trim(),
+                "email" to email.trim(),
+                "direccion" to direccion.trim()
             )
 
             try {
                 proveedoresRef(user.uid).add(data).await()
             } catch (e: Exception) {
                 println("Error al agregar proveedor: ${e.message}")
+            }
+        }
+    }
+
+    fun editarProveedor(
+        id: String,
+        nombre: String,
+        telefono: String,
+        email: String,
+        direccion: String
+    ) {
+        viewModelScope.launch {
+            val user = FirebaseAuth.getInstance().currentUser
+            if (user == null) {
+                println("No hay usuario autenticado, no se puede editar proveedor")
+                return@launch
+            }
+
+            val data = mapOf(
+                "nombre" to nombre.trim(),
+                "telefono" to telefono.trim(),
+                "email" to email.trim(),
+                "direccion" to direccion.trim()
+            )
+
+            try {
+                proveedoresRef(user.uid).document(id).update(data).await()
+            } catch (e: Exception) {
+                println("Error al editar proveedor: ${e.message}")
             }
         }
     }
@@ -91,5 +155,10 @@ class ProveedoresRestauracionViewModel : ViewModel() {
                 println("Error al eliminar proveedor: ${e.message}")
             }
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        proveedoresListener?.remove()
     }
 }
