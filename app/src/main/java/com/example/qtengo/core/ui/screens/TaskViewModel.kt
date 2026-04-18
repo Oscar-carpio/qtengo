@@ -19,16 +19,25 @@ import java.util.*
 /**
  * ViewModel para gestionar las tareas y la actividad diaria usando Firebase.
  */
-class TaskViewModel : ViewModel() {
-    private val taskRepository = TaskRepository()
-    private val financeRepository = FinanceRepository()
-    private val stockRepository = StockMovementRepository()
+class TaskViewModel(
+    private val taskRepository: TaskRepository = TaskRepository(),
+    private val financeRepository: FinanceRepository = FinanceRepository(),
+    private val stockRepository: StockMovementRepository = StockMovementRepository()
+) : ViewModel() {
 
     private val _selectedDate = MutableLiveData<String>()
     val selectedDate: LiveData<String> = _selectedDate
 
+    private val _creationFilter = MutableLiveData<String>("Todas") // "Todas", "Mes", "Año"
+    val creationFilter: LiveData<String> = _creationFilter
+
     /**
-     * Lista de tareas para la fecha seleccionada.
+     * Lista de todas las tareas del perfil para filtrar por creación si es necesario.
+     */
+    val allTasks: LiveData<List<Task>> = taskRepository.getByProfileFlow("PYME").asLiveData()
+
+    /**
+     * Lista de tareas para la fecha seleccionada (programadas).
      */
     val tasksByDate: LiveData<List<Task>> = _selectedDate.switchMap { date ->
         taskRepository.getByDate(date, "PYME").asLiveData()
@@ -60,16 +69,22 @@ class TaskViewModel : ViewModel() {
         _selectedDate.value = date
     }
 
+    fun setCreationFilter(filter: String) {
+        _creationFilter.value = filter
+    }
+
     /**
      * Inserta una nueva tarea vinculada a una fecha y perfil específicos.
      */
     fun insertTask(title: String, description: String, priority: String, date: String) = viewModelScope.launch {
+        val today = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
         val task = Task(
             title = title, 
             description = description, 
             priority = priority, 
             profile = "PYME",
-            date = date
+            date = date,
+            createdAt = today
         )
         taskRepository.insert(task)
     }
@@ -85,6 +100,6 @@ class TaskViewModel : ViewModel() {
      * Elimina una tarea de la base de datos.
      */
     fun deleteTask(task: Task) = viewModelScope.launch {
-        taskRepository.delete(task.id) // Corregido: pasar solo el ID
+        taskRepository.delete(task.id)
     }
 }

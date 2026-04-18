@@ -1,4 +1,4 @@
-package com.example.qtengo.pyme.ui
+package com.example.qtengo.pyme.ui.proveedores
 
 import androidx.lifecycle.*
 import com.example.qtengo.core.domain.models.Supplier
@@ -8,9 +8,10 @@ import kotlinx.coroutines.launch
 /**
  * ViewModel para la gestión de proveedores en el módulo Pyme usando Firebase.
  */
-class SupplierViewModel : ViewModel() {
+class ProveedoresViewModel(
+    private val repository: SupplierRepository = SupplierRepository()
+) : ViewModel() {
 
-    private val repository = SupplierRepository()
     private val _profileFilter = MutableLiveData<String>()
 
     val suppliers: LiveData<List<Supplier>> = _profileFilter.switchMap { profile ->
@@ -21,15 +22,12 @@ class SupplierViewModel : ViewModel() {
         loadProfile("PYME")
     }
 
-    /**
-     * Filtra los proveedores por el perfil seleccionado.
-     */
     fun loadProfile(profile: String) {
         _profileFilter.value = profile
     }
 
     /**
-     * Añade un nuevo proveedor a la base de datos.
+     * Inserta un nuevo proveedor.
      */
     fun insert(name: String, contact: String, phone: String, email: String, category: String) = viewModelScope.launch {
         val supplier = Supplier(
@@ -44,9 +42,16 @@ class SupplierViewModel : ViewModel() {
     }
 
     /**
+     * Actualiza un proveedor existente.
+     */
+    fun update(supplier: Supplier) = viewModelScope.launch {
+        repository.update(supplier)
+    }
+
+    /**
      * Elimina un proveedor.
      */
-    fun delete(supplier: Supplier) = viewModelScope.launch {
-        repository.delete(supplier.id)
+    fun delete(supplierId: String) = viewModelScope.launch {
+        repository.delete(supplierId)
     }
 }

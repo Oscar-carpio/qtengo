@@ -1,4 +1,4 @@
-package com.example.qtengo.pyme.ui
+package com.example.qtengo.pyme.ui.productos
 
 import androidx.lifecycle.*
 import com.example.qtengo.core.domain.models.Product
@@ -12,42 +12,43 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * ViewModel encargado de la lógica de negocio para la gestión de productos y stock en el módulo Pyme usando Firebase.
+ * ViewModel que gestiona la lógica de productos y control de inventario en tiempo real.
  */
-class ProductViewModel : ViewModel() {
+class ProductosViewModel(
+    private val repository: ProductRepository = ProductRepository(),
+    private val stockMovementRepository: StockMovementRepository = StockMovementRepository()
+) : ViewModel() {
 
-    private val repository = ProductRepository()
-    private val stockMovementRepository = StockMovementRepository()
-    private val _currentProfile = MutableStateFlow("FAMILIA")
+    private val _currentProfile = MutableStateFlow("PYME")
 
     /**
-     * Lista reactiva de todos los productos del perfil actual (Tiempo real desde Firebase).
+     * Lista de productos observada desde Firebase, filtrada por el perfil actual.
      */
     val products: LiveData<List<Product>> = _currentProfile.flatMapLatest { profile ->
         repository.getByProfileFlow(profile)
     }.asLiveData()
 
     /**
-     * Lista reactiva de productos con stock por debajo del mínimo.
+     * Filtra y expone los productos que están por debajo de su stock de seguridad.
      */
     val lowStockProducts: LiveData<List<Product>> = products.map { list ->
         list.filter { it.quantity <= it.minStock }
     }
 
     /**
-     * Contador total de productos registrados.
+     * Expone la cantidad total de productos en el catálogo.
      */
     val productCount: LiveData<Int> = products.map { it.size }
 
     /**
-     * Establece el perfil activo para filtrar los productos en la interfaz.
+     * Cambia el perfil de trabajo (ej: PYME, Familia) para cargar sus respectivos productos.
      */
     fun loadProfile(profile: String) {
         _currentProfile.value = profile
     }
 
     /**
-     * Inserta un nuevo producto en Firebase y registra el movimiento inicial.
+     * Registra un nuevo producto y genera un movimiento de entrada inicial.
      */
     fun insert(product: Product) = viewModelScope.launch {
         repository.insert(product)
@@ -55,14 +56,14 @@ class ProductViewModel : ViewModel() {
     }
 
     /**
-     * Actualiza la información general de un producto.
+     * Actualiza los datos descriptivos de un producto existente.
      */
     fun update(product: Product) = viewModelScope.launch {
         repository.update(product, product.id)
     }
 
     /**
-     * Actualiza la cantidad de stock y genera un registro de movimiento.
+     * Ajusta la cantidad de stock y registra la diferencia en el historial de movimientos.
      */
     fun updateQuantity(product: Product, newQuantity: Double) = viewModelScope.launch {
         val diff = newQuantity - product.quantity
@@ -73,6 +74,9 @@ class ProductViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Registra internamente un cambio en el stock en la base de datos de movimientos.
+     */
     private suspend fun recordMovement(product: Product, diff: Double, total: Double) {
         val date = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
         val movement = StockMovement(
@@ -87,7 +91,7 @@ class ProductViewModel : ViewModel() {
     }
 
     /**
-     * Elimina permanentemente un producto de Firebase.
+     * Elimina el producto del catálogo.
      */
     fun delete(product: Product) = viewModelScope.launch { 
         repository.delete(product.id)

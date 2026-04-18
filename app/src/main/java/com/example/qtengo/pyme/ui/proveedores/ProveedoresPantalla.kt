@@ -1,0 +1,328 @@
+package com.example.qtengo.pyme.ui.proveedores
+
+import android.content.Intent
+import android.net.Uri
+import android.util.Patterns
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.qtengo.core.domain.models.Supplier
+import com.example.qtengo.core.ui.components.QtengoTopBar
+
+/**
+ * Pantalla principal para la gestión de proveedores en el perfil PYME.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProveedoresPantalla(
+    profile: String = "PYME",
+    viewModel: ProveedoresViewModel = viewModel(),
+    onBack: () -> Unit,
+    onLogout: () -> Unit,
+    onChangeProfile: () -> Unit
+) {
+    val suppliers by viewModel.suppliers.observeAsState(emptyList())
+    var showAddDialog by remember { mutableStateOf(false) }
+    var supplierToEdit by remember { mutableStateOf<Supplier?>(null) }
+    val context = LocalContext.current
+    
+    var searchQuery by remember { mutableStateOf("") }
+    var sortByAlphabetical by remember { mutableStateOf(true) }
+    var filtersExpanded by remember { mutableStateOf(false) }
+
+    // Filtra los proveedores por nombre o descripción basándose en la búsqueda
+    val filteredSuppliers = suppliers.filter {
+        it.name.contains(searchQuery, ignoreCase = true) || 
+        it.category.contains(searchQuery, ignoreCase = true)
+    }.let { list ->
+        if (sortByAlphabetical) list.sortedBy { it.name }
+        else list
+    }
+
+    LaunchedEffect(profile) {
+        viewModel.loadProfile(profile)
+    }
+
+    Column(
+        modifier = Modifier.fillMaxSize().background(Color(0xFFF4F7FB))
+    ) {
+        QtengoTopBar(
+            title = "Proveedores",
+            onBack = onBack,
+            onLogout = onLogout,
+            onChangeProfile = onChangeProfile
+        )
+
+        // Buscador y Filtros
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().clickable { filtersExpanded = !filtersExpanded },
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Search, null, tint = Color(0xFF1A3A6B))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Buscador de Proveedores", fontWeight = FontWeight.Bold, color = Color(0xFF1A3A6B))
+                    }
+                    Icon(if (filtersExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown, null)
+                }
+
+                AnimatedVisibility(visible = filtersExpanded) {
+                    Column(modifier = Modifier.padding(top = 12.dp)) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            label = { Text("Nombre o descripción...") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { searchQuery = "" }) {
+                                        Icon(Icons.Default.Close, null)
+                                    }
+                                }
+                            }
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = sortByAlphabetical, onCheckedChange = { sortByAlphabetical = it })
+                            Text("Orden Alfabético (A-Z)", fontSize = 14.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        if (filteredSuppliers.isEmpty()) {
+            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Text(if (searchQuery.isEmpty()) "No hay proveedores registrados" else "Sin resultados", color = Color.Gray)
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.weight(1f).padding(horizontal = 16.dp),
+                contentPadding = PaddingValues(vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(filteredSuppliers) { supplier ->
+                    SupplierCardItem(
+                        supplier = supplier,
+                        onCall = {
+                            val intent = Intent(Intent.ACTION_DIAL).apply {
+                                data = Uri.parse("tel:${supplier.phone}")
+                            }
+                            context.startActivity(intent)
+                        },
+                        onEmail = {
+                            val intent = Intent(Intent.ACTION_SENDTO).apply {
+                                data = Uri.parse("mailto:${supplier.email}")
+                            }
+                            context.startActivity(intent)
+                        },
+                        onEdit = { supplierToEdit = supplier },
+                        onDelete = { viewModel.delete(supplier.id) }
+                    )
+                }
+            }
+        }
+
+        Button(
+            onClick = { showAddDialog = true },
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A3A6B))
+        ) {
+            Icon(Icons.Default.Add, null)
+            Spacer(Modifier.width(8.dp))
+            Text("Nuevo Proveedor")
+        }
+    }
+
+    if (showAddDialog) {
+        DialogoProveedor(
+            titulo = "Añadir Proveedor",
+            onDismiss = { showAddDialog = false },
+            onConfirm = { name, contact, phone, email, desc ->
+                viewModel.insert(name, contact, phone, email, desc)
+                showAddDialog = false
+            }
+        )
+    }
+
+    supplierToEdit?.let { supplier ->
+        DialogoProveedor(
+            titulo = "Editar Proveedor",
+            supplier = supplier,
+            onDismiss = { supplierToEdit = null },
+            onConfirm = { name, contact, phone, email, desc ->
+                viewModel.update(supplier.copy(name = name, contactName = contact, phone = phone, email = email, category = desc))
+                supplierToEdit = null
+            }
+        )
+    }
+}
+
+/**
+ * Tarjeta individual de proveedor con acciones rápidas de contacto.
+ */
+@Composable
+fun SupplierCardItem(
+    supplier: Supplier, 
+    onCall: () -> Unit, 
+    onEmail: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = supplier.name,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1A3A6B),
+                    modifier = Modifier.weight(1f)
+                )
+                Row {
+                    IconButton(onClick = onEdit) { Icon(Icons.Default.Edit, null, tint = Color.Gray, modifier = Modifier.size(20.dp)) }
+                    IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828), modifier = Modifier.size(20.dp)) }
+                }
+            }
+            if (supplier.category.isNotBlank()) {
+                Surface(
+                    color = Color(0xFFE3F2FD),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.padding(vertical = 4.dp)
+                ) {
+                    Text(
+                        text = supplier.category,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1565C0)
+                    )
+                }
+            }
+            Text(text = "Contacto: ${supplier.contactName}", fontSize = 14.sp, color = Color.Gray)
+            Spacer(Modifier.height(12.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    modifier = Modifier.clickable { onCall() }.padding(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Call, null, modifier = Modifier.size(18.dp), tint = Color(0xFF1565C0))
+                    Text(" ${supplier.phone}", fontSize = 13.sp, color = Color(0xFF1565C0))
+                }
+                Spacer(Modifier.width(20.dp))
+                Row(
+                    modifier = Modifier.clickable { onEmail() }.padding(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Email, null, modifier = Modifier.size(18.dp), tint = Color(0xFF1565C0))
+                    Text(" Email", fontSize = 13.sp, color = Color(0xFF1565C0))
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Diálogo para la creación y edición de proveedores con validación de datos.
+ */
+@Composable
+fun DialogoProveedor(
+    titulo: String,
+    supplier: Supplier? = null,
+    onDismiss: () -> Unit, 
+    onConfirm: (String, String, String, String, String) -> Unit
+) {
+    var name by remember { mutableStateOf(supplier?.name ?: "") }
+    var contact by remember { mutableStateOf(supplier?.contactName ?: "") }
+    var phone by remember { mutableStateOf(supplier?.phone ?: "") }
+    var email by remember { mutableStateOf(supplier?.email ?: "") }
+    var description by remember { mutableStateOf(supplier?.category ?: "") }
+
+    // Validaciones simples
+    val isEmailValid = email.isEmpty() || Patterns.EMAIL_ADDRESS.matcher(email).matches()
+    val isPhoneValid = phone.isEmpty() || phone.startsWith("+") || phone.all { it.isDigit() }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(titulo) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Empresa") })
+                OutlinedTextField(value = contact, onValueChange = { contact = it }, label = { Text("Nombre de contacto") })
+                
+                // Campo Teléfono con filtrado de caracteres
+                OutlinedTextField(
+                    value = phone, 
+                    onValueChange = { input -> 
+                        // Solo permite números y el signo +
+                        if (input.all { it.isDigit() || it == '+' }) phone = input 
+                    }, 
+                    label = { Text("Teléfono (ej: +34...)") }, 
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    isError = !isPhoneValid
+                )
+                
+                // Campo Email con validación visual
+                OutlinedTextField(
+                    value = email, 
+                    onValueChange = { email = it }, 
+                    label = { Text("Email") }, 
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    isError = !isEmailValid,
+                    supportingText = { if (!isEmailValid) Text("Formato de email inválido", color = Color.Red) }
+                )
+                
+                OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Descripción / Detalles") })
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { 
+                    if(name.isNotEmpty() && isEmailValid && phone.isNotEmpty()) {
+                        onConfirm(name, contact, phone, email, description) 
+                    }
+                },
+                enabled = name.isNotEmpty() && isEmailValid && isPhoneValid && phone.isNotEmpty()
+            ) { Text("Guardar") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+    )
+}
