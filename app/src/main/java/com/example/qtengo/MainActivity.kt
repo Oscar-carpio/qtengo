@@ -27,13 +27,16 @@ import com.example.qtengo.familiar.ui.gastos.AddGastoScreen
 import com.example.qtengo.familiar.ui.inventario.InventarioScreen
 import com.example.qtengo.familiar.ui.inventario.AddInventarioScreen
 import com.example.qtengo.familiar.ui.tareas.TareasScreen
-import com.example.qtengo.pyme.ui.PymeHomeScreen
+
 import com.example.qtengo.restauracion.ui.RestauracionHomeScreen
-import com.example.qtengo.pyme.ui.PymeFinanceScreen
-import com.example.qtengo.pyme.ui.EmployeeScreen
-import com.example.qtengo.pyme.ui.SupplierScreen
-import com.example.qtengo.pyme.ui.ProductScreen
-import com.example.qtengo.pyme.ui.TaskScreen
+
+import com.example.qtengo.pyme.ui.inicio.PymeInicioPantalla
+import com.example.qtengo.pyme.ui.finanzas.FinanzasPantalla
+import com.example.qtengo.pyme.ui.empleados.EmpleadosPantalla
+import com.example.qtengo.pyme.ui.proveedores.ProveedoresPantalla
+import com.example.qtengo.pyme.ui.productos.ProductosPantalla
+import com.example.qtengo.pyme.ui.tareas.TareasPantalla
+
 import com.example.qtengo.core.ui.screens.SplashScreen
 import com.example.qtengo.core.ui.theme.QtengoTheme
 import com.google.firebase.auth.FirebaseAuth
@@ -246,35 +249,35 @@ class MainActivity : ComponentActivity() {
                     // --- PERFIL PYME ---
                     perfilActivo == "Pyme" -> {
                         when (currentScreen) {
-                            "" -> PymeHomeScreen(
+                            "" -> PymeInicioPantalla(
                                 onMenuSelected = { currentScreen = it },
                                 onLogout = { cerrarSesion() },
                                 onChangeProfile = { cambiarPerfil() }
                             )
-                            "Productos / Stock" -> ProductScreen(
+                            "Productos / Stock" -> ProductosPantalla(
                                 profile = "PYME",
                                 onBack = { currentScreen = "" },
                                 onLogout = { cerrarSesion() },
                                 onChangeProfile = { cambiarPerfil() }
                             )
-                            "Gastos e ingresos" -> PymeFinanceScreen(
+                            "Gastos e ingresos" -> FinanzasPantalla(
                                 onBack = { currentScreen = "" },
                                 onLogout = { cerrarSesion() },
                                 onChangeProfile = { cambiarPerfil() }
                             )
-                            "Proveedores" -> SupplierScreen(
+                            "Proveedores" -> ProveedoresPantalla(
                                 profile = "PYME",
                                 onBack = { currentScreen = "" },
                                 onLogout = { cerrarSesion() },
                                 onChangeProfile = { cambiarPerfil() }
                             )
-                            "Empleados" -> EmployeeScreen(
+                            "Empleados" -> EmpleadosPantalla(
                                 profile = "PYME",
                                 onBack = { currentScreen = "" },
                                 onLogout = { cerrarSesion() },
                                 onChangeProfile = { cambiarPerfil() }
                             )
-                            "Agenda de Tareas" -> TaskScreen(
+                            "Agenda de Tareas" -> TareasPantalla(
                                 onBack = { currentScreen = "" },
                                 onLogout = { cerrarSesion() },
                                 onChangeProfile = { cambiarPerfil() }
@@ -302,9 +305,7 @@ class MainActivity : ComponentActivity() {
                                 onChangeProfile = { cambiarPerfil() }
                             )
                             "Reservas" -> ReservasScreen(
-                                onBack = { currentScreen = "" },
-                                onLogout = { cerrarSesion() },
-                                onChangeProfile = { cambiarPerfil() }
+                                onBack = { currentScreen = "" }
                             )
                             "Proveedores" -> ProveedoresRestauracionScreen(
                                 onBack = { currentScreen = "" },
@@ -314,7 +315,6 @@ class MainActivity : ComponentActivity() {
                             else -> currentScreen = ""
                         }
                     }
-
                     else -> {
                         Box(
                             modifier = Modifier.fillMaxSize(),

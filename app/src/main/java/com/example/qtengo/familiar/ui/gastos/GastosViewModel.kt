@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
+import kotlinx.coroutines.flow.map
 import java.util.*
 
 data class Gasto(
@@ -50,6 +51,14 @@ class GastosViewModel : ViewModel() {
 
     private val _gastosRecurrentes = MutableStateFlow<List<GastoRecurrente>>(emptyList())
     val gastosRecurrentes: StateFlow<List<GastoRecurrente>> = _gastosRecurrentes
+
+    val gastosPorCategoria: StateFlow<Map<String, Double>> = _gastos
+        .map { lista ->
+            lista.filter { it.tipo == "GASTO" }
+                .groupBy { it.categoria.ifBlank { "Sin categoría" } }
+                .mapValues { (_, items) -> items.sumOf { it.cantidad } }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     // FIX CRIT #4 — Canal de errores para que la UI los muestre al usuario
     private val _error = MutableStateFlow<String?>(null)

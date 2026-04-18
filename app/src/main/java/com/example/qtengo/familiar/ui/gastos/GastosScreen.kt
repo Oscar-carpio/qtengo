@@ -5,12 +5,15 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -25,12 +28,14 @@ fun GastosScreen(
     onBack: () -> Unit,
     viewModel: GastosViewModel = viewModel()
 ) {
+    val context = LocalContext.current
     val gastos by viewModel.gastos.collectAsState()
     val gastosFiltrados by viewModel.gastosFiltrados.collectAsState()
     val presupuesto by viewModel.presupuesto.collectAsState()
     val gastosRecurrentes by viewModel.gastosRecurrentes.collectAsState()
     val fechaInicio by viewModel.fechaInicio.collectAsState()
     val fechaFin by viewModel.fechaFin.collectAsState()
+    val gastosPorCategoria by viewModel.gastosPorCategoria.collectAsState()
 
     val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
 
@@ -40,6 +45,8 @@ fun GastosScreen(
     var recurrenteAEditar by remember { mutableStateOf<GastoRecurrente?>(null) }
     var showAddRecurrenteDialog by remember { mutableStateOf(false) }
     var showFiltroDialog by remember { mutableStateOf(false) }
+    var showGrafico by remember { mutableStateOf(false) }
+    var showExportarDialog by remember { mutableStateOf(false) }
 
     // DatePicker states
     val datePickerStateInicio = rememberDatePickerState()
@@ -49,7 +56,7 @@ fun GastosScreen(
 
     // Totales reactivos
     val mesActual = remember {
-        SimpleDateFormat("MM/yyyy", Locale.getDefault()).format(Date())
+        SimpleDateFormat("MM/yyyy", Locale("es", "ES")).format(Date())
     }
     val totalGastos = gastos
         .filter { it.tipo == "GASTO" && it.fecha.endsWith(mesActual) }
@@ -118,7 +125,6 @@ fun GastosScreen(
             title = { Text("Filtrar por fechas") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    // Fecha inicio
                     OutlinedButton(
                         onClick = { showDatePickerInicio = true },
                         modifier = Modifier.fillMaxWidth()
@@ -130,7 +136,6 @@ fun GastosScreen(
                             else "Seleccionar fecha inicio"
                         )
                     }
-                    // Fecha fin
                     OutlinedButton(
                         onClick = { showDatePickerFin = true },
                         modifier = Modifier.fillMaxWidth()
@@ -142,7 +147,6 @@ fun GastosScreen(
                             else "Seleccionar fecha fin"
                         )
                     }
-                    // Botón limpiar filtro
                     if (hayFiltroActivo) {
                         TextButton(
                             onClick = {
@@ -158,6 +162,47 @@ fun GastosScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showFiltroDialog = false }) { Text("Cerrar") }
+            }
+        )
+    }
+
+    // Diálogo exportar
+    if (showExportarDialog) {
+        AlertDialog(
+            onDismissRequest = { showExportarDialog = false },
+            title = { Text("Exportar gastos") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Se exportarán ${gastosFiltrados.size} movimientos${if (hayFiltroActivo) " (filtrados)" else ""}.",
+                        fontSize = 13.sp,
+                        color = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Button(
+                        onClick = {
+                            ExportarGastosHelper.exportarCSV(context, gastosFiltrados)
+                            showExportarDialog = false
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+                    ) {
+                        Text("Exportar CSV")
+                    }
+                    Button(
+                        onClick = {
+                            ExportarGastosHelper.exportarPDF(context, gastosFiltrados)
+                            showExportarDialog = false
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A3A6B))
+                    ) {
+                        Text("Exportar PDF")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showExportarDialog = false }) { Text("Cancelar") }
             }
         )
     }
@@ -236,16 +281,14 @@ fun GastosScreen(
             .background(Color(0xFFF4F7FB))
     ) {
         // Header
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Color(0xFF1A3A6B))
-                .padding(24.dp)
+                .padding(horizontal = 8.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(
-                onClick = { onBack() },
-                modifier = Modifier.align(Alignment.CenterStart)
-            ) {
+            IconButton(onClick = { onBack() }) {
                 Text(text = "←", fontSize = 24.sp, color = Color.White)
             }
             Text(
@@ -253,19 +296,31 @@ fun GastosScreen(
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
-                modifier = Modifier.align(Alignment.Center)
+                modifier = Modifier.weight(1f),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
-            // Botón filtro en el header
-            IconButton(
-                onClick = { showFiltroDialog = true },
-                modifier = Modifier.align(Alignment.CenterEnd)
-            ) {
+            IconButton(onClick = { showGrafico = !showGrafico }) {
+                Icon(
+                    imageVector = Icons.Default.BarChart,
+                    contentDescription = "Ver gráfico",
+                    tint = if (showGrafico) Color(0xFFFFC107) else Color.White
+                )
+            }
+            IconButton(onClick = { showExportarDialog = true }) {
+                Icon(
+                    imageVector = Icons.Default.FileDownload,
+                    contentDescription = "Exportar",
+                    tint = Color.White
+                )
+            }
+            IconButton(onClick = { showFiltroDialog = true }) {
                 Icon(
                     imageVector = Icons.Default.DateRange,
                     contentDescription = "Filtrar por fechas",
                     tint = if (hayFiltroActivo) Color(0xFFFFC107) else Color.White
                 )
             }
+
         }
 
         // Banner filtro activo
@@ -301,6 +356,13 @@ fun GastosScreen(
             modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(bottom = 16.dp)
         ) {
+            // Gráfico por categoría (visible solo si showGrafico = true)
+            if (showGrafico) {
+                item {
+                    GraficoCategorias(gastosPorCategoria = gastosPorCategoria)
+                }
+            }
+
             item {
                 GastosResumenCard(
                     totalGastos = totalGastos,
@@ -323,7 +385,6 @@ fun GastosScreen(
             }
 
             item {
-                // Usar gastosFiltrados en lugar de gastos
                 GastosPuntualesSection(
                     gastos = gastosFiltrados,
                     onEdit = { gastoAEditar = it },
