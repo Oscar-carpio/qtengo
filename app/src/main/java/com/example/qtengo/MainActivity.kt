@@ -64,7 +64,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             QtengoTheme {
-                var showSplash by remember { mutableStateOf(true) }
+
                 var uid by remember { mutableStateOf<String?>(null) }
 
                 // Lista completa de perfiles del usuario
@@ -135,7 +135,7 @@ class MainActivity : ComponentActivity() {
                             auth.signOut()
                         }
                     }
-                    showSplash = false
+
                 }
 
                 // Cierra sesión y resetea todo el estado
@@ -154,10 +154,6 @@ class MainActivity : ComponentActivity() {
                 }
 
                 when {
-                    showSplash -> SplashScreen(
-                        onSplashFinished = { showSplash = false }
-                    )
-
                     uid == null && mostrarRegistro -> RegisterScreen(
                         onRegistroExitoso = { nuevoUid, nuevosPerfiles ->
                             uid = nuevoUid
