@@ -49,6 +49,9 @@ class GastosViewModel : ViewModel() {
     private val _presupuesto = MutableStateFlow<Double?>(null)
     val presupuesto: StateFlow<Double?> = _presupuesto
 
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading
+
     private val _gastosRecurrentes = MutableStateFlow<List<GastoRecurrente>>(emptyList())
     val gastosRecurrentes: StateFlow<List<GastoRecurrente>> = _gastosRecurrentes
 
@@ -192,6 +195,7 @@ class GastosViewModel : ViewModel() {
     fun guardarPresupuesto(cantidad: Double) {
         requireUid() ?: return
         viewModelScope.launch {
+            _isLoading.value = true
             try {
                 configRef().set(
                     mapOf("presupuestoMensual" to cantidad),
@@ -199,6 +203,8 @@ class GastosViewModel : ViewModel() {
                 ).await()
             } catch (e: Exception) {
                 _error.value = "Error al guardar presupuesto: ${e.message}"
+            }finally {
+                _isLoading.value = false
             }
         }
     }
@@ -206,7 +212,7 @@ class GastosViewModel : ViewModel() {
     fun añadirGasto(descripcion: String, cantidad: Double, categoria: String, tipo: String) {
         requireUid() ?: return
         viewModelScope.launch {
-            // FIX CRIT #4
+            _isLoading.value = true
             try {
                 val fecha = SimpleDateFormat("dd/MM/yyyy", Locale("es", "ES")).format(Date())
                 val data = mapOf(
@@ -221,6 +227,8 @@ class GastosViewModel : ViewModel() {
                 gastosRef().add(data).await()
             } catch (e: Exception) {
                 _error.value = "Error al añadir gasto: ${e.message}"
+            } finally {
+                _isLoading.value = false
             }
         }
     }
@@ -228,7 +236,7 @@ class GastosViewModel : ViewModel() {
     fun añadirGastoRecurrente(descripcion: String, cantidad: Double, categoria: String, fechaCobro: String) {
         requireUid() ?: return
         viewModelScope.launch {
-            // FIX CRIT #4
+            _isLoading.value = true
             try {
                 val data = mapOf(
                     "descripcion" to descripcion,
@@ -239,6 +247,42 @@ class GastosViewModel : ViewModel() {
                 recurrentesRef().add(data).await()
             } catch (e: Exception) {
                 _error.value = "Error al añadir gasto recurrente: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun editarGasto(gastoId: String, descripcion: String, cantidad: Double, categoria: String) {
+        requireUid() ?: return
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                gastosRef().document(gastoId).update(
+                    mapOf(
+                        "descripcion" to descripcion,
+                        "cantidad" to cantidad,
+                        "categoria" to categoria
+                    )
+                ).await()
+            } catch (e: Exception) {
+                _error.value = "Error al editar gasto: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun eliminarGastoRecurrente(gastoId: String) {
+        requireUid() ?: return
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                recurrentesRef().document(gastoId).delete().await()
+            } catch (e: Exception) {
+                _error.value = "Error al eliminar gasto recurrente: ${e.message}"
+            } finally {
+                _isLoading.value = false
             }
         }
     }
@@ -246,7 +290,7 @@ class GastosViewModel : ViewModel() {
     fun editarGastoRecurrente(gastoId: String, descripcion: String, cantidad: Double, categoria: String, fechaCobro: String) {
         requireUid() ?: return
         viewModelScope.launch {
-            // FIX CRIT #4
+            _isLoading.value = true
             try {
                 recurrentesRef().document(gastoId).update(
                     mapOf(
@@ -258,36 +302,8 @@ class GastosViewModel : ViewModel() {
                 ).await()
             } catch (e: Exception) {
                 _error.value = "Error al editar gasto recurrente: ${e.message}"
-            }
-        }
-    }
-
-    fun eliminarGastoRecurrente(gastoId: String) {
-        requireUid() ?: return
-        viewModelScope.launch {
-            // FIX CRIT #4
-            try {
-                recurrentesRef().document(gastoId).delete().await()
-            } catch (e: Exception) {
-                _error.value = "Error al eliminar gasto recurrente: ${e.message}"
-            }
-        }
-    }
-
-    fun editarGasto(gastoId: String, descripcion: String, cantidad: Double, categoria: String) {
-        requireUid() ?: return
-        viewModelScope.launch {
-            // FIX CRIT #4
-            try {
-                gastosRef().document(gastoId).update(
-                    mapOf(
-                        "descripcion" to descripcion,
-                        "cantidad" to cantidad,
-                        "categoria" to categoria
-                    )
-                ).await()
-            } catch (e: Exception) {
-                _error.value = "Error al editar gasto: ${e.message}"
+            } finally {
+                _isLoading.value = false
             }
         }
     }
@@ -295,7 +311,7 @@ class GastosViewModel : ViewModel() {
     fun registrarGastoDesdeLista(listaId: String, nombreLista: String, cantidad: Double) {
         requireUid() ?: return
         viewModelScope.launch {
-            // FIX CRIT #4
+            _isLoading.value = true
             try {
                 val fecha = SimpleDateFormat("dd/MM/yyyy", Locale("es", "ES")).format(Date())
                 val data = mapOf(
@@ -310,6 +326,8 @@ class GastosViewModel : ViewModel() {
                 gastosRef().add(data).await()
             } catch (e: Exception) {
                 _error.value = "Error al registrar gasto desde lista: ${e.message}"
+            } finally {
+                _isLoading.value = false
             }
         }
     }
@@ -317,11 +335,13 @@ class GastosViewModel : ViewModel() {
     fun eliminarGasto(gastoId: String) {
         requireUid() ?: return
         viewModelScope.launch {
-            // FIX CRIT #4
+            _isLoading.value = true
             try {
                 gastosRef().document(gastoId).delete().await()
             } catch (e: Exception) {
                 _error.value = "Error al eliminar gasto: ${e.message}"
+            } finally {
+                _isLoading.value = false
             }
         }
     }
@@ -329,7 +349,7 @@ class GastosViewModel : ViewModel() {
     // ─── Totales ─────────────────────────────────────────────────────────────
 
     fun totalGastos(): Double {
-        val mesActual = SimpleDateFormat("MM/yyyy", Locale.getDefault()).format(Date())
+        val mesActual = SimpleDateFormat("MM/yyyy", Locale("es", "ES")).format(Date())
         return _gastos.value
             .filter { it.tipo == "GASTO" && it.fecha.endsWith(mesActual) }
             .sumOf { it.cantidad }

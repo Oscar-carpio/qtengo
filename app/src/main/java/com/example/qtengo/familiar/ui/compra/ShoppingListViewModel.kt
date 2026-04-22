@@ -214,7 +214,7 @@ class ShoppingListViewModel : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val fecha = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
+                val fecha = SimpleDateFormat("dd/MM/yyyy", Locale("es", "ES")).format(Date())
                 val data = mapOf(
                     "name" to nombre,
                     "itemCount" to 0,
@@ -235,6 +235,7 @@ class ShoppingListViewModel : ViewModel() {
     fun añadirItem(listaId: String, nombre: String, cantidad: String, precio: Double) {
         requireUid() ?: return
         viewModelScope.launch {
+            _isLoading.value = true
             try {
                 val data = mapOf(
                     "name" to nombre,
@@ -247,6 +248,7 @@ class ShoppingListViewModel : ViewModel() {
             } catch (e: Exception) {
                 _error.value = "Error al añadir producto: ${e.message}"
             }
+            finally { _isLoading.value = false }
         }
     }
 
@@ -275,13 +277,15 @@ class ShoppingListViewModel : ViewModel() {
     fun toggleItem(listaId: String, itemId: String, checked: Boolean) {
         requireUid() ?: return
         viewModelScope.launch {
+            _isLoading.value = true
             try {
                 listasRef().document(listaId)
                     .collection("productos").document(itemId)
                     .update("isChecked", checked).await()
             } catch (e: Exception) {
                 _error.value = "Error al actualizar producto: ${e.message}"
-            }
+            }finally { _isLoading.value = false }
+
         }
     }
 
@@ -322,9 +326,13 @@ class ShoppingListViewModel : ViewModel() {
     }
 
     private suspend fun actualizarContador(listaId: String, delta: Int) {
-        listasRef().document(listaId)
-            .update("itemCount", FieldValue.increment(delta.toLong()))
-            .await()
+        try {
+            listasRef().document(listaId)
+                .update("itemCount", FieldValue.increment(delta.toLong()))
+                .await()
+        } catch (e: Exception) {
+            _error.value = "Error al actualizar contador: ${e.message}"
+        }
     }
 
     override fun onCleared() {

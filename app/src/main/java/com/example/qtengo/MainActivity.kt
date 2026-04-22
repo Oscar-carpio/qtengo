@@ -28,7 +28,7 @@ import com.example.qtengo.familiar.ui.inventario.InventarioScreen
 import com.example.qtengo.familiar.ui.inventario.AddInventarioScreen
 import com.example.qtengo.familiar.ui.tareas.TareasScreen
 
-import com.example.qtengo.restauracion.ui.RestauracionHomeScreen
+
 
 import com.example.qtengo.pyme.ui.inicio.PymeInicioPantalla
 import com.example.qtengo.pyme.ui.finanzas.FinanzasPantalla
@@ -46,6 +46,11 @@ import com.example.qtengo.restauracion.ui.carta.CartaScreen
 import com.example.qtengo.restauracion.ui.stock.StockCocinaScreen
 import com.example.qtengo.restauracion.ui.reservas.ReservasScreen
 import com.example.qtengo.restauracion.ui.proveedores.ProveedoresRestauracionScreen
+import com.example.qtengo.restauracion.ui.home.RestauracionHomeScreen
+import com.example.qtengo.restauracion.ui.reservas.RestauracionReserva
+import com.example.qtengo.restauracion.ui.proveedores.RestauracionProveedor
+
+
 
 
 /**

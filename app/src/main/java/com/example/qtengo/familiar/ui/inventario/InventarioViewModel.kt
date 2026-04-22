@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -88,9 +89,8 @@ class InventarioViewModel : ViewModel() {
     ) {
         requireUid() ?: return
         viewModelScope.launch {
-            // FIX CRIT #2
             try {
-                val data = mutableMapOf(
+                val data = mutableMapOf<String, Any>(
                     "nombre" to nombre,
                     "cantidad" to cantidad,
                     "ubicacion" to ubicacion,
@@ -119,16 +119,16 @@ class InventarioViewModel : ViewModel() {
     ) {
         requireUid() ?: return
         viewModelScope.launch {
-            // FIX CRIT #2
             try {
-                inventarioRef().document(itemId).update(
-                    "nombre", nombre,
-                    "cantidad", cantidad,
-                    "ubicacion", ubicacion,
-                    "minStock", minStock,
-                    "notas", notas,
-                    "fechaCaducidad", fechaCaducidad ?: ""
-                ).await()
+                val data = hashMapOf<String, Any>(
+                    "nombre" to nombre,
+                    "cantidad" to cantidad,
+                    "ubicacion" to ubicacion,
+                    "minStock" to minStock,
+                    "notas" to notas,
+                    "fechaCaducidad" to (fechaCaducidad ?: FieldValue.delete())
+                )
+                inventarioRef().document(itemId).update(data).await()
             } catch (e: Exception) {
                 _error.value = "Error al editar artículo: ${e.message}"
             }

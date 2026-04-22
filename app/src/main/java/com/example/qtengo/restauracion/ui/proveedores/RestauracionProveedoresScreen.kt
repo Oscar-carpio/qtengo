@@ -46,7 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.qtengo.data.model.restauracion.RestauracionProveedor
+import com.example.qtengo.restauracion.ui.proveedores.RestauracionProveedor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,12 +57,27 @@ fun RestauracionProveedoresScreen(
     val proveedores by viewModel.proveedoresFiltrados.collectAsState()
     val filtro by viewModel.filtro.collectAsState()
 
+
+    val error by viewModel.error.collectAsState()
+
     var showAddDialog by remember { mutableStateOf(false) }
     var proveedorAEditar by remember { mutableStateOf<RestauracionProveedor?>(null) }
     var proveedorAEliminar by remember { mutableStateOf<RestauracionProveedor?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.cargarProveedores()
+    }
+    error?.let {
+        AlertDialog(
+            onDismissRequest = { viewModel.clearError() },
+            title = { Text("Error") },
+            text = { Text(it) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.clearError() }) {
+                    Text("Aceptar")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -131,7 +146,7 @@ fun RestauracionProveedoresScreen(
                 ) {
                     items(
                         items = proveedores,
-                        key = { it.id_proveedor }
+                        key = { it.id }
                     ) { proveedor ->
                         ProveedorRestauracionCard(
                             proveedor = proveedor,
@@ -171,7 +186,7 @@ fun RestauracionProveedoresScreen(
                 onDismiss = { proveedorAEditar = null },
                 onGuardar = { nombre, telefono, email, direccion ->
                     viewModel.editarProveedor(
-                        id = proveedor.id_proveedor,
+                        id = proveedor.id,
                         nombre = nombre,
                         telefono = telefono,
                         email = email,
@@ -192,7 +207,7 @@ fun RestauracionProveedoresScreen(
                 confirmButton = {
                     Button(
                         onClick = {
-                            viewModel.eliminarProveedor(proveedor.id_proveedor)
+                            viewModel.eliminarProveedor(proveedor.id)
                             proveedorAEliminar = null
                         }
                     ) {
