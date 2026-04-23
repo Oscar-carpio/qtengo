@@ -1,9 +1,12 @@
 package com.example.qtengo.pyme.ui
 
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+
+import com.example.qtengo.pyme.ui.productos.ProductosViewModel
 import io.mockk.mockk
 import org.junit.Rule
 import org.junit.Test
@@ -16,11 +19,11 @@ class PymeHomeScreenTest {
     @Test
     fun verificarQueSeMuestranTodosLosModulosDeGestionEnElMenuPrincipal() {
         composeTestRule.setContent {
-            PymeHomeScreen(
+            PymeInicioPantalla(
                 onMenuSelected = {},
                 onLogout = {},
                 onChangeProfile = {},
-                productViewModel = mockk(relaxed = true)
+                productosViewModel = mockk(relaxed = true)
             )
         }
 
@@ -36,11 +39,11 @@ class PymeHomeScreenTest {
     fun verificarQueAlSeleccionarUnModuloSeDisparaLaNavegacionCorrespondiente() {
         var moduloSeleccionado = ""
         composeTestRule.setContent {
-            PymeHomeScreen(
+            PymeInicioPantalla(
                 onMenuSelected = { moduloSeleccionado = it },
                 onLogout = {},
                 onChangeProfile = {},
-                productViewModel = mockk(relaxed = true)
+                productosViewModel = mockk(relaxed = true)
             )
         }
 
@@ -52,18 +55,17 @@ class PymeHomeScreenTest {
     }
 
     @Test
-    fun verificarQueElDashboardMuestraLosContadoresCorrectosDeProductosYStockBajo() {
+    fun verificarQueElDashboardMuestraLosContadoresCorrectos() {
         composeTestRule.setContent {
-            DashboardSection(
-                productCount = 15,
-                lowStockCount = 3
+            IndicadorEstadisticoPyme(
+                title = "Productos",
+                value = "15",
+                color = Color.Blue
             )
         }
 
         // Verificar que las cifras y etiquetas del dashboard son visibles
         composeTestRule.onNodeWithText("15").assertIsDisplayed()
-        composeTestRule.onNodeWithText("3").assertIsDisplayed()
         composeTestRule.onNodeWithText("Productos").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Stock bajo").assertIsDisplayed()
     }
 }

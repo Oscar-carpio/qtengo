@@ -48,14 +48,22 @@ fun FiltrosTareas(
     val context = LocalContext.current
     val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
 
-    PymeFilterCard(
+    val isFiltered = searchQuery.isNotBlank() || 
+                    statusFilter != "Todas" || 
+                    filterMonth != 0 || 
+                    filterYear != "Todos" || 
+                    dateFilterEnabled || 
+                    sortBy.isNotEmpty()
+
+    TarjetaFiltroPyme(
         title = "Buscador y Filtros de Tareas",
         searchQuery = searchQuery,
-        onSearchChange = onSearchChange
+        onSearchChange = onSearchChange,
+        isFiltered = isFiltered
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             // Ordenación común integrada con el estilo del Inventario
-            OrderButtons(
+            BotonesOrden(
                 sortBy = sortBy,
                 isAscending = isAscending,
                 onSortChange = onSortChange,

@@ -14,13 +14,15 @@ fun FiltrosProveedores(
         else -> ""
     }
     val isAscending = currentOrder == OrderType.NAME_ASC
+    val isFiltered = searchQuery.isNotBlank() || currentOrder != OrderType.NONE
 
-    PymeFilterCard(
+    TarjetaFiltroPyme(
         title = "Buscador de Proveedores",
         searchQuery = searchQuery,
-        onSearchChange = onSearchChange
+        onSearchChange = onSearchChange,
+        isFiltered = isFiltered
     ) {
-        OrderButtons(
+        BotonesOrden(
             sortBy = sortBy,
             isAscending = isAscending,
             onSortChange = { name, asc ->

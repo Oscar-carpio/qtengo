@@ -23,12 +23,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.qtengo.core.domain.models.Task
+import com.example.qtengo.pyme.ui.DialogoConfirmarEliminar
+import com.example.qtengo.pyme.ui.TarjetaEstadisticaPyme
 import com.example.qtengo.core.ui.components.QtengoTopBar
 import com.example.qtengo.core.ui.screens.TaskViewModel
 import com.example.qtengo.pyme.ui.filtros.FiltrosTareas
-import com.example.qtengo.pyme.ui.tareas.components.DialogoTarea
-import com.example.qtengo.pyme.ui.tareas.components.ResumenCardTareas
-import com.example.qtengo.pyme.ui.tareas.components.TareaCardItem
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -46,15 +45,16 @@ fun TareasPantalla(
     val allTasks by viewModel.allTasks.observeAsState(emptyList())
     val selectedDate by viewModel.selectedDate.observeAsState("")
     
-    var showAddDialog by remember { mutableStateOf(false) }
-    var taskToEdit by remember { mutableStateOf<Task?>(null) }
+    val showAddDialog = remember { mutableStateOf(false) }
+    val taskToEdit = remember { mutableStateOf<Task?>(null) }
+    val taskToDelete = remember { mutableStateOf<Task?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     
     var statusFilter by remember { mutableStateOf("Todas") } 
     var dateFilterEnabled by remember { mutableStateOf(false) }
     var filterMonth by remember { mutableIntStateOf(0) }
     var filterYear by remember { mutableStateOf("Todos") }
-    var sortBy by remember { mutableStateOf("Nombre") }
+    var sortBy by remember { mutableStateOf("") }
     var isAscending by remember { mutableStateOf(true) }
     
     val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
@@ -85,25 +85,31 @@ fun TareasPantalla(
         }
 
         matchesSearch && matchesStatus && matchesDate && matchesCreation
-    }.sortedWith { t1, t2 ->
-        val res = when (sortBy) {
-            "Nombre" -> t1.title.compareTo(t2.title, ignoreCase = true)
-            else -> 0
-        }
-        if (res != 0) {
-            if (isAscending) res else -res
+    }.let { list ->
+        if (sortBy == "") {
+            list.sortedByDescending { it.timestamp }
         } else {
-            compareBy<Task> { it.date.isEmpty() }
-                .thenBy { 
-                    when (it.priority.uppercase()) {
-                        "ALTA" -> 0
-                        "MEDIA" -> 1
-                        "BAJA" -> 2
-                        else -> 3
-                    }
+            list.sortedWith { t1, t2 ->
+                val res = when (sortBy) {
+                    "Nombre" -> t1.title.compareTo(t2.title, ignoreCase = true)
+                    else -> 0
                 }
-                .thenByDescending { it.createdAt }
-                .compare(t1, t2)
+                if (res != 0) {
+                    if (isAscending) res else -res
+                } else {
+                    compareBy<Task> { it.date.isEmpty() }
+                        .thenBy { 
+                            when (it.priority.uppercase()) {
+                                "ALTA" -> 0
+                                "MEDIA" -> 1
+                                "BAJA" -> 2
+                                else -> 3
+                            }
+                        }
+                        .thenByDescending { it.timestamp }
+                        .compare(t1, t2)
+                }
+            }
         }
     }
 
@@ -115,7 +121,6 @@ fun TareasPantalla(
             onChangeProfile = onChangeProfile
         )
 
-        // Panel de búsqueda y filtrado unificado en la carpeta filtros/
         FiltrosTareas(
             searchQuery = searchQuery,
             onSearchChange = { searchQuery = it },
@@ -128,15 +133,15 @@ fun TareasPantalla(
             dateFilterEnabled = dateFilterEnabled,
             onDateFilterToggle = { dateFilterEnabled = it },
             selectedDate = selectedDate,
-            onDateSelected = { viewModel.selectDate(it) },
+            onDateSelected = { viewModel.seleccionarFecha(it) },
             sortBy = sortBy,
             isAscending = isAscending,
             onSortChange = { s, a -> sortBy = s; isAscending = a }
         )
 
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            ResumenCardTareas(title = "Visibles", value = "${filteredTasks.size}", color = Color(0xFF1565C0), modifier = Modifier.weight(1f))
-            ResumenCardTareas(title = "Pendientes", value = "${allTasks.count { !it.isCompleted }}", color = Color(0xFFD32F2F), modifier = Modifier.weight(1f))
+            TarjetaEstadisticaPyme(titulo = "Visibles", valor = "${filteredTasks.size}", color = Color(0xFF1565C0), modifier = Modifier.weight(1f))
+            TarjetaEstadisticaPyme(titulo = "Pendientes", valor = "${allTasks.count { !it.isCompleted }}", color = Color(0xFFD32F2F), modifier = Modifier.weight(1f))
         }
 
         Spacer(Modifier.height(16.dp))
@@ -151,50 +156,64 @@ fun TareasPantalla(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 contentPadding = PaddingValues(bottom = 16.dp)
             ) {
-                items(filteredTasks) { task ->
-                    TareaCardItem(
-                        task = task,
-                        today = today,
-                        onToggle = { viewModel.updateTask(task.copy(isCompleted = !task.isCompleted)) },
-                        onEdit = { taskToEdit = task },
-                        onDelete = { viewModel.deleteTask(task) }
+                items(filteredTasks) { tarea ->
+                    ElementoTarjetaTarea(
+                        tarea = tarea,
+                        hoy = today,
+                        onAlternarEstado = { viewModel.actualizarTarea(tarea.copy(isCompleted = !tarea.isCompleted)) },
+                        onEditar = { taskToEdit.value = tarea },
+                        onEliminar = { taskToDelete.value = tarea }
                     )
                 }
             }
         }
 
         Button(
-            onClick = { showAddDialog = true },
+            onClick = { showAddDialog.value = true },
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A3A6B))
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A3A6B), contentColor = Color.White)
         ) {
-            Icon(Icons.Default.Add, null)
+            Icon(Icons.Default.Add, null, tint = Color.White)
             Spacer(Modifier.width(8.dp))
-            Text("Nueva Tarea")
+            Text("Añadir Tarea", color = Color.White)
         }
     }
 
-    if (showAddDialog) {
+    if (showAddDialog.value) {
         DialogoTarea(
             titulo = "Nueva Tarea",
-            onDismiss = { showAddDialog = false },
+            onDismiss = { showAddDialog.value = false },
             onConfirm = { title, desc, priority, date ->
-                viewModel.insertTask(title, desc, priority, date)
-                showAddDialog = false
+                viewModel.insertarTarea(title, desc, priority, date)
+                showAddDialog.value = false
             }
         )
     }
 
-    taskToEdit?.let { task ->
+    val tEdit = taskToEdit.value
+    if (tEdit != null) {
         DialogoTarea(
             titulo = "Editar Tarea",
-            task = task,
-            onDismiss = { taskToEdit = null },
+            task = tEdit,
+            onDismiss = { taskToEdit.value = null },
             onConfirm = { title, desc, priority, date ->
-                viewModel.updateTask(task.copy(title = title, description = desc, priority = priority, date = date))
-                taskToEdit = null
+                viewModel.actualizarTarea(tEdit.copy(title = title, description = desc, priority = priority, date = date))
+                taskToEdit.value = null
             }
+        )
+    }
+
+    val tDelete = taskToDelete.value
+    if (tDelete != null) {
+        DialogoConfirmarEliminar(
+            titulo = "Confirmar eliminación",
+            mensaje = "¿Estás seguro de que deseas eliminar la tarea '${tDelete.title}'?",
+            onConfirmar = {
+                viewModel.eliminarTarea(tDelete)
+                taskToDelete.value = null
+            },
+            onDescartar = { taskToDelete.value = null }
         )
     }
 }

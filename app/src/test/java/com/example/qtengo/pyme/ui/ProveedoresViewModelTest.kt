@@ -46,7 +46,7 @@ class ProveedoresViewModelTest {
     }
 
     @Test
-    fun `loadProfile carga los proveedores del perfil indicado`() = runTest {
+    fun loadProfile_cargaLosProveedoresDelPerfilIndicado() = runTest {
         val proveedoresMock = listOf(Supplier(id = "1", name = "Proveedor A", profile = "PYME"))
         every { repository.getByProfileFlow("PYME") } returns flowOf(proveedoresMock)
 
@@ -61,7 +61,7 @@ class ProveedoresViewModelTest {
     }
 
     @Test
-    fun `insert llama al repositorio con los datos correctos`() = runTest {
+    fun insert_llamaAlRepositorioConLosDatosCorrectos() = runTest {
         viewModel.loadProfile("PYME")
         advanceUntilIdle()
 
@@ -78,7 +78,7 @@ class ProveedoresViewModelTest {
     }
 
     @Test
-    fun `update llama al repositorio`() = runTest {
+    fun update_llamaAlRepositorio() = runTest {
         val supplier = Supplier(id = "123", name = "Update Test")
         viewModel.update(supplier)
         advanceUntilIdle()
@@ -86,7 +86,7 @@ class ProveedoresViewModelTest {
     }
 
     @Test
-    fun `delete llama al repositorio`() = runTest {
+    fun delete_llamaAlRepositorio() = runTest {
         val id = "id_delete"
         viewModel.delete(id)
         advanceUntilIdle()

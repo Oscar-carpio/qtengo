@@ -1,11 +1,5 @@
 /**
  * Pantalla de Control de Stock e Inventario.
- * 
- * Interfaz central para la gestión del almacén. Permite:
- * - Consultar existencias en tiempo real.
- * - Identificar productos críticos (Stock Bajo).
- * - Realizar ajustes rápidos de inventario.
- * - Filtrar por criterios múltiples (unidades, nombre, stock).
  */
 package com.example.qtengo.pyme.ui.productos
 
@@ -24,21 +18,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.qtengo.core.domain.models.Product
+import com.example.qtengo.pyme.ui.DialogoConfirmarEliminar
+import com.example.qtengo.pyme.ui.TarjetaEstadisticaPyme
 import com.example.qtengo.core.ui.components.QtengoTopBar
 import com.example.qtengo.pyme.ui.filtros.FiltrosProductos
-import com.example.qtengo.pyme.ui.productos.components.DialogoEdicionProducto
-import com.example.qtengo.pyme.ui.productos.components.ProductoItemCard
-import com.example.qtengo.pyme.ui.productos.components.SummaryCard
 
-/**
- * Composable principal del almacén Pyme.
- * 
- * @param profile Perfil de usuario activo.
- * @param viewModel Lógica de persistencia y movimientos de almacén.
- * @param onBack Navegación hacia atrás.
- * @param onLogout Cierre de sesión.
- * @param onChangeProfile Cambio de perfil.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductosPantalla(
@@ -48,28 +32,27 @@ fun ProductosPantalla(
     onLogout: () -> Unit,
     onChangeProfile: () -> Unit
 ) {
-    // Datos observados desde el ViewModel
     val products by viewModel.products.observeAsState(emptyList())
     val lowStockProducts by viewModel.lowStockProducts.observeAsState(emptyList())
 
-    // Estados de control de la UI (Búsqueda, Filtros y Diálogos)
-    var searchQuery by remember { mutableStateOf("") }
-    var filterByLowStock by remember { mutableStateOf(false) }
-    var sortBy by remember { mutableStateOf("Registro") }
-    var isAscending by remember { mutableStateOf(true) }
-    var selectedUnits by remember { mutableStateOf(setOf<String>()) }
-    var showAddDialog by remember { mutableStateOf(false) }
-    var productToEdit by remember { mutableStateOf<Product?>(null) }
+    val searchQuery = remember { mutableStateOf("") }
+    val filterByLowStock = remember { mutableStateOf(false) }
+    val sortBy = remember { mutableStateOf("") }
+    val isAscending = remember { mutableStateOf(true) }
+    val selectedUnits = remember { mutableStateOf(setOf<String>()) }
+    val showAddDialog = remember { mutableStateOf(false) }
+    val productToEdit = remember { mutableStateOf<Product?>(null) }
+    val productToDelete = remember { mutableStateOf<Product?>(null) }
 
-    // Procesamiento dinámico de la lista (Filtrado y Ordenación)
     val filteredProducts = products.filter { product ->
-        val matchesSearch = product.name.contains(searchQuery, ignoreCase = true)
-        val matchesLowStock = !filterByLowStock || product.quantity <= product.minStock
-        val matchesUnits = selectedUnits.isEmpty() || selectedUnits.contains(product.unit)
+        val matchesSearch = product.name.contains(searchQuery.value, ignoreCase = true)
+        val matchesLowStock = !filterByLowStock.value || product.quantity <= product.minStock
+        val matchesUnits = selectedUnits.value.isEmpty() || selectedUnits.value.contains(product.unit)
         matchesSearch && matchesLowStock && matchesUnits
     }.let { list ->
-        if (sortBy == "Registro") {
-            if (isAscending) list else list.reversed()
+        if (sortBy.value == "") {
+            // Orden por defecto: el último creado arriba
+            list.sortedByDescending { it.timestamp }
         } else {
             list.sortedWith { p1, p2 ->
                 val low1 = p1.quantity <= p1.minStock
@@ -77,19 +60,19 @@ fun ProductosPantalla(
                 if (low1 != low2) {
                     if (low1) -1 else 1
                 } else {
-                    val res = when (sortBy) {
+                    val res = when (sortBy.value) {
                         "Nombre" -> p1.name.compareTo(p2.name, ignoreCase = true)
                         "Cantidad" -> p1.quantity.compareTo(p2.quantity)
                         else -> 0
                     }
-                    if (isAscending) res else -res
+                    if (isAscending.value) res else -res
                 }
             }
         }
     }
 
     LaunchedEffect(profile) {
-        viewModel.loadProfile(profile)
+        viewModel.cargarPerfil(profile)
     }
 
     Column(
@@ -102,71 +85,81 @@ fun ProductosPantalla(
             onChangeProfile = onChangeProfile
         )
 
-        // Filtros unificados importados desde la carpeta filtros/
         FiltrosProductos(
-            searchQuery = searchQuery,
-            onSearchChange = { searchQuery = it },
-            sortBy = sortBy,
-            isAscending = isAscending,
-            onSortChange = { s, a -> sortBy = s; isAscending = a },
-            selectedUnits = selectedUnits,
-            onUnitsChange = { selectedUnits = it },
-            filterByLowStock = filterByLowStock,
-            onLowStockChange = { filterByLowStock = it }
+            searchQuery = searchQuery.value,
+            onSearchChange = { searchQuery.value = it },
+            sortBy = sortBy.value,
+            isAscending = isAscending.value,
+            onSortChange = { s, a -> sortBy.value = s; isAscending.value = a },
+            selectedUnits = selectedUnits.value,
+            onUnitsChange = { selectedUnits.value = it },
+            filterByLowStock = filterByLowStock.value,
+            onLowStockChange = { filterByLowStock.value = it }
         )
 
-        // Indicadores rápidos de estado del almacén
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            SummaryCard(title = "Total Items", value = "${products.size}", color = Color(0xFF1A3A6B), modifier = Modifier.weight(1f))
-            SummaryCard(title = "Stock Bajo", value = "${lowStockProducts.size}", color = if (lowStockProducts.isNotEmpty()) Color(0xFFD32F2F) else Color(0xFF388E3C), modifier = Modifier.weight(1f))
+            TarjetaEstadisticaPyme(titulo = "Total Items", valor = "${products.size}", color = Color(0xFF1A3A6B), modifier = Modifier.weight(1f))
+            TarjetaEstadisticaPyme(titulo = "Stock Bajo", valor = "${lowStockProducts.size}", color = if (lowStockProducts.isNotEmpty()) Color(0xFFD32F2F) else Color(0xFF388E3C), modifier = Modifier.weight(1f))
         }
 
-        // Listado de productos
         LazyColumn(
             modifier = Modifier.weight(1f).padding(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(filteredProducts) { product ->
-                ProductoItemCard(
-                    product = product, 
-                    onUpdateQuantity = { viewModel.updateQuantity(product, it) }, 
-                    onDelete = { viewModel.delete(product) },
-                    onEdit = { productToEdit = it }
+                ElementoTarjetaProducto(
+                    producto = product, 
+                    onActualizarCantidad = { viewModel.actualizarCantidad(product, it) },
+                    onEliminar = { productToDelete.value = product },
+                    onEditar = { productToEdit.value = it }
                 )
             }
         }
 
-        // Botón para añadir nuevo producto
         Button(
-            onClick = { showAddDialog = true },
+            onClick = { showAddDialog.value = true },
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A3A6B))
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A3A6B), contentColor = Color.White)
         ) {
-            Icon(Icons.Default.Add, null)
+            Icon(Icons.Default.Add, null, tint = Color.White)
             Spacer(Modifier.width(8.dp))
-            Text("Añadir al Almacén")
+            Text("Añadir Producto", color = Color.White)
         }
     }
 
-    if (showAddDialog) {
+    if (showAddDialog.value) {
         DialogoEdicionProducto(
-            onDismiss = { showAddDialog = false },
-            onConfirm = { 
-                viewModel.insert(it.copy(profile = profile))
-                showAddDialog = false
+            onDismiss = { showAddDialog.value = false },
+            onConfirm = {
+                viewModel.insertar(it.copy(profile = profile))
+                showAddDialog.value = false
             }
         )
     }
 
-    productToEdit?.let { product ->
+    val pToEdit = productToEdit.value
+    if (pToEdit != null) {
         DialogoEdicionProducto(
-            product = product,
-            onDismiss = { productToEdit = null },
-            onConfirm = { 
-                viewModel.update(it)
-                productToEdit = null
+            product = pToEdit,
+            onDismiss = { productToEdit.value = null },
+            onConfirm = {
+                viewModel.actualizar(it)
+                productToEdit.value = null
             }
+        )
+    }
+
+    val pToDelete = productToDelete.value
+    if (pToDelete != null) {
+        DialogoConfirmarEliminar(
+            titulo = "Confirmar eliminación",
+            mensaje = "¿Estás seguro de que deseas eliminar el producto ${pToDelete.name}?",
+            onConfirmar = {
+                viewModel.eliminar(pToDelete)
+                productToDelete.value = null
+            },
+            onDescartar = { productToDelete.value = null }
         )
     }
 }

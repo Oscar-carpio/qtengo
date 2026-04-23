@@ -1,10 +1,10 @@
-package com.example.qtengo.ui.restauracion
+package com.example.qtengo.restauracion
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.example.qtengo.data.model.restauracion.RestauracionProducto
-import com.example.qtengo.ui.restauracion.inventario.InventarioRestauracionViewModel
-import com.example.qtengo.ui.restauracion.menu.MenuViewModel
-import com.example.qtengo.ui.restauracion.reservas.ReservasViewModel
+import com.example.qtengo.restauracion.ui.inventario.InventarioRestauracionViewModel
+import com.example.qtengo.restauracion.ui.menu.MenuViewModel
+import com.example.qtengo.restauracion.ui.reservas.ReservasViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.CollectionReference
@@ -32,6 +32,7 @@ class MainDispatcherRule(
     }
 }
 
+@ExperimentalCoroutinesApi
 class ViewModelsTest {
 
     @get:Rule

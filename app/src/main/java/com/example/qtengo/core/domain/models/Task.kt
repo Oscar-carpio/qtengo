@@ -18,5 +18,6 @@ data class Task(
     val priority: String = "MEDIA",
     val profile: String = "",
     val date: String = "", // Fecha programada dd/MM/yyyy
-    val createdAt: String = "" // Fecha de creación dd/MM/yyyy
+    val createdAt: String = "", // Fecha de creación dd/MM/yyyy
+    val timestamp: Long = System.currentTimeMillis()
 )

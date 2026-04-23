@@ -3,7 +3,6 @@ package com.example.qtengo.pyme.ui
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.lifecycle.Observer
 import com.example.qtengo.core.data.repositories.EmployeeRepository
-import com.example.qtengo.core.data.repositories.FinanceRepository
 import com.example.qtengo.core.domain.models.Employee
 import com.example.qtengo.pyme.ui.empleados.EmpleadosViewModel
 import io.mockk.coVerify
@@ -26,9 +25,6 @@ import org.junit.Test
 
 /**
  * Tests unitarios para [EmpleadosViewModel].
- * 
- * Verifica la gestión de la plantilla de empleados y la integración automática
- * con el módulo de finanzas para el registro de gastos de nómina.
  */
 @ExperimentalCoroutinesApi
 class EmpleadosViewModelTest {
@@ -38,7 +34,6 @@ class EmpleadosViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private val employeeRepository = mockk<EmployeeRepository>(relaxed = true)
-    private val financeRepository = mockk<FinanceRepository>(relaxed = true)
     private lateinit var viewModel: EmpleadosViewModel
 
     @Before
@@ -46,7 +41,7 @@ class EmpleadosViewModelTest {
         Dispatchers.setMain(testDispatcher)
         // Mock inicial para evitar que el switchMap falle al iniciar el ViewModel
         every { employeeRepository.getByProfileFlow(any()) } returns flowOf(emptyList())
-        viewModel = EmpleadosViewModel(employeeRepository, financeRepository)
+        viewModel = EmpleadosViewModel(employeeRepository)
     }
 
     @After
@@ -59,7 +54,7 @@ class EmpleadosViewModelTest {
      * la lista de empleados mostrada en la UI.
      */
     @Test
-    fun `loadProfile actualiza la lista de empleados`() = runTest {
+    fun loadProfile_actualizaLaListaDeEmpleados() = runTest {
         // Given
         val listaMock = listOf(Employee(id = "1", name = "Test", profile = "PYME"))
         every { employeeRepository.getByProfileFlow("PYME") } returns flowOf(listaMock)
@@ -79,11 +74,10 @@ class EmpleadosViewModelTest {
     }
 
     /**
-     * Prueba crítica: Verifica que al insertar un empleado no solo se guarde su ficha,
-     * sino que también se genere un asiento contable automático en finanzas.
+     * Verifica que al insertar un empleado se guarde correctamente en el repositorio.
      */
     @Test
-    fun `insert registra empleado y genera un movimiento de gasto en finanzas`() = runTest {
+    fun insert_registraEmpleadoCorrectamente() = runTest {
         // Given
         val nombre = "Carlos"
         val salario = 1500.0
@@ -94,22 +88,13 @@ class EmpleadosViewModelTest {
 
         // Then: Verificar persistencia del empleado
         coVerify { employeeRepository.insert(match { it.name == nombre && it.salary == salario }) }
-
-        // Then: Verificar generación automática de nómina en Finanzas
-        coVerify {
-            financeRepository.insert(match {
-                it.concept == "Nómina de $nombre" &&
-                        it.amount == salario &&
-                        it.type == "GASTO"
-            })
-        }
     }
 
     /**
      * Asegura que la orden de eliminación se propague correctamente al repositorio.
      */
     @Test
-    fun `delete llama al repositorio de empleados`() = runTest {
+    fun delete_llamaAlRepositorioDeEmpleados() = runTest {
         val id = "emp_123"
         viewModel.delete(id)
         advanceUntilIdle()
@@ -120,7 +105,7 @@ class EmpleadosViewModelTest {
      * Asegura que la actualización de datos del empleado se propague correctamente al repositorio.
      */
     @Test
-    fun `update llama al repositorio de empleados`() = runTest {
+    fun update_llamaAlRepositorioDeEmpleados() = runTest {
         val emp = Employee(id = "1", name = "Editado")
         viewModel.update(emp)
         advanceUntilIdle()

@@ -4,7 +4,7 @@
  * Stock, Finanzas, Proveedores, Empleados y Tareas.
  * También muestra indicadores clave (KPIs) de inventario.
  */
-package com.example.qtengo.pyme.ui.inicio
+package com.example.qtengo.pyme.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -29,7 +29,7 @@ import com.example.qtengo.pyme.ui.productos.ProductosViewModel
 /**
  * Define una opción del menú principal con su estética y destino.
  */
-data class PymeMenuOption(val title: String, val icon: String, val color: Color)
+data class OpcionMenuPyme(val title: String, val icon: String, val color: Color)
 
 @Composable
 fun PymeInicioPantalla(
@@ -42,36 +42,36 @@ fun PymeInicioPantalla(
     val lowStockProducts by productosViewModel.lowStockProducts.observeAsState(emptyList())
 
     val menuOptions = listOf(
-        PymeMenuOption("Productos / Stock", "📦", Color(0xFF1565C0)),
-        PymeMenuOption("Gastos e ingresos", "💹", Color(0xFF1976D2)),
-        PymeMenuOption("Proveedores", "🚚", Color(0xFF1E88E5)),
-        PymeMenuOption("Empleados", "👥", Color(0xFF2196F3)),
-        PymeMenuOption("Agenda de Tareas", "📝", Color(0xFF0288D1))
+        OpcionMenuPyme("Productos / Stock", "📦", Color(0xFF1565C0)),
+        OpcionMenuPyme("Gastos e ingresos", "💹", Color(0xFF1565C0)),
+        OpcionMenuPyme("Proveedores", "🚚", Color(0xFF1565C0)),
+        OpcionMenuPyme("Empleados", "👥", Color(0xFF1565C0)),
+        OpcionMenuPyme("Agenda de Tareas", "📝", Color(0xFF1565C0))
     )
 
     Column(
         modifier = Modifier.fillMaxSize().background(Color(0xFFF4F7FB))
     ) {
         QtengoTopBar(
-            title = "Panel Pyme",
+            title = "Perfil Pyme",
             onLogout = onLogout,
             onChangeProfile = onChangeProfile
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Marcadores de indicadores clave (Dashboard)
+        // Marcadores de indicadores clave (Dashboard) usando el componente unificado
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), 
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            DashboardCard(
+            IndicadorEstadisticoPyme(
                 title = "Productos", 
                 value = productCount.toString(), 
                 color = Color(0xFF1565C0), 
                 modifier = Modifier.weight(1f).clickable { onMenuSelected("Productos / Stock") }
             )
-            DashboardCard(
+            IndicadorEstadisticoPyme(
                 title = "Stock bajo", 
                 value = lowStockProducts.size.toString(), 
                 color = Color(0xFFD32F2F), 
@@ -91,29 +91,8 @@ fun PymeInicioPantalla(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(menuOptions) { option ->
-                MenuCard(option = option, onClick = { onMenuSelected(option.title) })
+                TarjetaMenu(option = option, onClick = { onMenuSelected(option.title) })
             }
-        }
-    }
-}
-
-/**
- * Tarjeta informativa para mostrar métricas clave en la cabecera.
- */
-@Composable
-fun DashboardCard(title: String, value: String, color: Color, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier.height(80.dp),
-        colors = CardDefaults.cardColors(containerColor = color),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize(), 
-            verticalArrangement = Arrangement.Center, 
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(text = value, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            Text(text = title, color = Color.White, fontSize = 12.sp)
         }
     }
 }
@@ -122,7 +101,7 @@ fun DashboardCard(title: String, value: String, color: Color, modifier: Modifier
  * Tarjeta interactiva del menú de navegación.
  */
 @Composable
-fun MenuCard(option: PymeMenuOption, onClick: () -> Unit) {
+fun TarjetaMenu(option: OpcionMenuPyme, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().height(120.dp).clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = option.color),
@@ -134,4 +113,18 @@ fun MenuCard(option: PymeMenuOption, onClick: () -> Unit) {
             Text(text = option.title, color = Color.White, fontWeight = FontWeight.Bold)
         }
     }
+}
+
+/**
+ * Tarjeta para mostrar indicadores (KPIs) en el dashboard.
+ * Utiliza el componente TarjetaEstadisticaPyme para mantener la consistencia visual.
+ */
+@Composable
+fun IndicadorEstadisticoPyme(title: String, value: String, color: Color, modifier: Modifier = Modifier) {
+    TarjetaEstadisticaPyme(
+        titulo = title,
+        valor = value,
+        color = color,
+        modifier = modifier
+    )
 }

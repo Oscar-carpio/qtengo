@@ -47,7 +47,7 @@ class ProductosViewModelTest {
     }
 
     @Test
-    fun `lowStockProducts filtra correctamente productos con poco stock`() = runTest {
+    fun lowStockProducts_filtraCorrectamenteProductosConPocoStock() = runTest {
         val productos = listOf(
             Product(id = "1", name = "Mucho Stock", quantity = 10.0, minStock = 5.0),
             Product(id = "2", name = "Poco Stock", quantity = 2.0, minStock = 5.0)
@@ -65,7 +65,7 @@ class ProductosViewModelTest {
     }
 
     @Test
-    fun `updateQuantity registra un movimiento de stock si la cantidad cambia`() = runTest {
+    fun updateQuantity_registraUnMovimientoDeStockSiLaCantidadCambia() = runTest {
         val product = Product(id = "prod1", name = "Martillo", quantity = 10.0, profile = "PYME")
 
         viewModel.updateQuantity(product, 15.0)
@@ -83,7 +83,7 @@ class ProductosViewModelTest {
     }
 
     @Test
-    fun `insert registra producto y movimiento inicial`() = runTest {
+    fun insert_registraProductoYMovimientoInicial() = runTest {
         val product = Product(id = "new", name = "Nuevo", quantity = 20.0, profile = "PYME")
 
         viewModel.insert(product)

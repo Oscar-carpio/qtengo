@@ -59,7 +59,7 @@ class TaskViewModelTest {
     }
 
     @Test
-    fun `selectDate actualiza la fecha seleccionada y dispara nuevas consultas`() = runTest {
+    fun selectDate_actualizaLaFechaSeleccionadaYDisparaNuevasConsultas() = runTest {
         val nuevaFecha = "25/12/2024"
         val tareasMock = listOf(Task(id = "1", title = "Tarea Navidad", date = nuevaFecha))
 
@@ -78,7 +78,7 @@ class TaskViewModelTest {
     }
 
     @Test
-    fun `insertTask llama al repositorio con la fecha de creacion de hoy`() = runTest {
+    fun insertTask_llamaAlRepositorioConLaFechaDeCreacionDeHoy() = runTest {
         val today = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
 
         viewModel.insertTask("Comprar pan", "Descripción", "ALTA", "30/12/2024")
@@ -94,7 +94,7 @@ class TaskViewModelTest {
     }
 
     @Test
-    fun `updateTask y deleteTask llaman correctamente al repositorio`() = runTest {
+    fun updateTaskYDeleteTask_llamanCorrectamenteAlRepositorio() = runTest {
         val task = Task(id = "task_1", title = "Test")
 
         viewModel.updateTask(task)
@@ -107,7 +107,7 @@ class TaskViewModelTest {
     }
 
     @Test
-    fun `financeByDate y stockByDate reaccionan al cambio de fecha`() = runTest {
+    fun financeByDateYStockByDate_reaccionanAlCambioDeFecha() = runTest {
         val fecha = "01/01/2024"
         
         // ACTIVAR LOS LIVEDATA para que el switchMap se ejecute

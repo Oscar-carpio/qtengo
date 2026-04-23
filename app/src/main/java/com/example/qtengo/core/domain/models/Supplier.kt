@@ -7,5 +7,6 @@ data class Supplier(
     val phone: String = "",
     val email: String = "",
     val category: String = "",
-    val profile: String = ""
+    val profile: String = "",
+    val timestamp: Long = System.currentTimeMillis()
 )

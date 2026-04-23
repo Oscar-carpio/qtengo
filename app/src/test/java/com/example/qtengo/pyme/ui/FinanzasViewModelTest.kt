@@ -65,7 +65,7 @@ class FinanzasViewModelTest {
      * y las nóminas generadas a partir de la tabla de empleados.
      */
     @Test
-    fun `movements combina correctamente movimientos de caja y nominas de empleados`() = runTest {
+    fun movements_combinaCorrectamenteMovimientosDeCajaYNominasDeEmpleados() = runTest {
         // Given
         val movimientosCaja = listOf(
             FinanceMovement(id = "1", concept = "Venta", amount = 100.0, type = "INGRESO", profile = "PYME")
@@ -93,7 +93,7 @@ class FinanzasViewModelTest {
      * las nóminas como gastos adicionales.
      */
     @Test
-    fun `calculo de totalIngresos y totalGastos es correcto`() = runTest {
+    fun calculoDeTotalIngresosYTotalGastosEsCorrecto() = runTest {
         // Given
         val movimientos = listOf(
             FinanceMovement(amount = 500.0, type = "INGRESO"),
@@ -120,7 +120,7 @@ class FinanzasViewModelTest {
      * Comprueba que la inserción de un nuevo movimiento se delegue correctamente al repositorio.
      */
     @Test
-    fun `insert llama al repositorio de finanzas`() = runTest {
+    fun insert_llamaAlRepositorioDeFinanzas() = runTest {
         val movement = FinanceMovement(concept = "Test", amount = 10.0, type = "INGRESO")
         viewModel.insert(movement)
         coVerify { financeRepository.insert(movement) }
@@ -130,7 +130,7 @@ class FinanzasViewModelTest {
      * Asegura que los movimientos normales sí puedan ser eliminados.
      */
     @Test
-    fun `delete elimina si el ID NO empieza por nomina_`() = runTest {
+    fun delete_eliminaSiElIDNoEmpiezaPorNomina_() = runTest {
         viewModel.delete("mov_123")
         coVerify { financeRepository.delete("mov_123") }
     }

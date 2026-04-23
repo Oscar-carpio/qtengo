@@ -31,14 +31,14 @@ class ProveedoresViewModel(
 
     init {
         // Inicialización predeterminada para el entorno PYME
-        loadProfile("PYME")
+        cargarPerfil("PYME")
     }
 
     /**
      * Define el perfil actual para la consulta de proveedores.
      * @param profile Identificador del perfil (ej: "PYME", "FAMILIAR").
      */
-    fun loadProfile(profile: String) {
+    fun cargarPerfil(profile: String) {
         _profileFilter.value = profile
     }
 
@@ -50,7 +50,7 @@ class ProveedoresViewModel(
      * @param email Correo electrónico.
      * @param category Categoría o descripción del servicio/producto que provee.
      */
-    fun insert(name: String, contact: String, phone: String, email: String, category: String) = viewModelScope.launch {
+    fun insertar(name: String, contact: String, phone: String, email: String, category: String) = viewModelScope.launch {
         val supplier = Supplier(
             name = name,
             contactName = contact,
@@ -66,7 +66,7 @@ class ProveedoresViewModel(
      * Actualiza la información de un proveedor existente.
      * @param supplier Objeto proveedor con los datos actualizados.
      */
-    fun update(supplier: Supplier) = viewModelScope.launch {
+    fun actualizar(supplier: Supplier) = viewModelScope.launch {
         repository.update(supplier)
     }
 
@@ -74,7 +74,7 @@ class ProveedoresViewModel(
      * Elimina un proveedor del sistema.
      * @param supplierId Identificador único del proveedor a borrar.
      */
-    fun delete(supplierId: String) = viewModelScope.launch {
+    fun eliminar(supplierId: String) = viewModelScope.launch {
         repository.delete(supplierId)
     }
 }

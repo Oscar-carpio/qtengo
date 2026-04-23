@@ -52,14 +52,14 @@ class ProductosViewModel(
     /**
      * Define el contexto de trabajo (PYME/Familia) para cargar el inventario correspondiente.
      */
-    fun loadProfile(profile: String) {
+    fun cargarPerfil(profile: String) {
         _currentProfile.value = profile
     }
 
     /**
      * Registra un nuevo producto y genera un movimiento de entrada inicial por la cantidad total.
      */
-    fun insert(product: Product) = viewModelScope.launch {
+    fun insertar(product: Product) = viewModelScope.launch {
         val currentList = products.value ?: emptyList()
         
         // Generar ID automático: 001 + Inicial de la unidad
@@ -77,13 +77,13 @@ class ProductosViewModel(
         val productWithId = product.copy(customId = generatedCustomId)
         
         repository.insert(productWithId)
-        recordMovement(productWithId, productWithId.quantity, productWithId.quantity)
+        registrarMovimiento(productWithId, productWithId.quantity, productWithId.quantity)
     }
 
     /**
      * Actualiza metadatos del producto (nombre, descripción, categoría) sin alterar el stock.
      */
-    fun update(product: Product) = viewModelScope.launch {
+    fun actualizar(product: Product) = viewModelScope.launch {
         repository.update(product, product.id)
     }
 
@@ -92,19 +92,19 @@ class ProductosViewModel(
      * @param product Producto a modificar.
      * @param newQuantity Nueva cifra total de existencias.
      */
-    fun updateQuantity(product: Product, newQuantity: Double) = viewModelScope.launch {
+    fun actualizarCantidad(product: Product, newQuantity: Double) = viewModelScope.launch {
         val diff = newQuantity - product.quantity
         if (diff != 0.0) {
             val updatedProduct = product.copy(quantity = newQuantity)
             repository.update(updatedProduct, product.id)
-            recordMovement(updatedProduct, diff, newQuantity)
+            registrarMovimiento(updatedProduct, diff, newQuantity)
         }
     }
 
     /**
      * Función interna para registrar auditorías de cambios en el inventario.
      */
-    private suspend fun recordMovement(product: Product, diff: Double, total: Double) {
+    private suspend fun registrarMovimiento(product: Product, diff: Double, total: Double) {
         val date = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
         val movement = StockMovement(
             productId = product.id.hashCode(),
@@ -120,7 +120,7 @@ class ProductosViewModel(
     /**
      * Elimina una referencia del catálogo permanentemente.
      */
-    fun delete(product: Product) = viewModelScope.launch { 
+    fun eliminar(product: Product) = viewModelScope.launch {
         repository.delete(product.id)
     }
 }

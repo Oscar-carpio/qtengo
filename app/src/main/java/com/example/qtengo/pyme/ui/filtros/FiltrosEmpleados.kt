@@ -10,12 +10,15 @@ fun FiltrosEmpleados(
     isAscending: Boolean,
     onSortChange: (String, Boolean) -> Unit
 ) {
-    PymeFilterCard(
+    val isFiltered = searchQuery.isNotBlank() || sortBy.isNotEmpty()
+
+    TarjetaFiltroPyme(
         title = "Buscar y Ordenar Plantilla",
         searchQuery = searchQuery,
-        onSearchChange = onSearchChange
+        onSearchChange = onSearchChange,
+        isFiltered = isFiltered
     ) {
-        OrderButtons(
+        BotonesOrden(
             sortBy = sortBy,
             isAscending = isAscending,
             onSortChange = onSortChange,

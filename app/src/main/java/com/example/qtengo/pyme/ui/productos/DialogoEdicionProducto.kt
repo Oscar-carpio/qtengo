@@ -1,4 +1,4 @@
-package com.example.qtengo.pyme.ui.productos.components
+package com.example.qtengo.pyme.ui.productos
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions

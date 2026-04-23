@@ -35,9 +35,6 @@ class TaskViewModel(
      */
     val selectedDate: LiveData<String> = _selectedDate
 
-    private val _creationFilter = MutableLiveData<String>("Todas")
-    val creationFilter: LiveData<String> = _creationFilter
-
     /**
      * Lista reactiva de todas las tareas asociadas al perfil PYME.
      */
@@ -73,23 +70,15 @@ class TaskViewModel(
      * Actualiza la fecha de consulta global para los flujos de tareas, finanzas y stock.
      * @param date Nueva fecha seleccionada.
      */
-    fun selectDate(date: String) {
+    fun seleccionarFecha(date: String) {
         _selectedDate.value = date
-    }
-
-    /**
-     * Establece el filtro de visualización según la fecha de creación.
-     * @param filter Valores posibles: "Todas", "Mes", "Año".
-     */
-    fun setCreationFilter(filter: String) {
-        _creationFilter.value = filter
     }
 
     /**
      * Crea y persiste una nueva tarea.
      * Automáticamente asigna la fecha de creación actual y el perfil PYME.
      */
-    fun insertTask(title: String, description: String, priority: String, date: String) = viewModelScope.launch {
+    fun insertarTarea(title: String, description: String, priority: String, date: String) = viewModelScope.launch {
         val today = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
         val task = Task(
             title = title, 
@@ -105,14 +94,14 @@ class TaskViewModel(
     /**
      * Actualiza una tarea existente (título, descripción, prioridad o estado de completado).
      */
-    fun updateTask(task: Task) = viewModelScope.launch {
+    fun actualizarTarea(task: Task) = viewModelScope.launch {
         taskRepository.update(task)
     }
 
     /**
      * Elimina permanentemente una tarea de la base de datos.
      */
-    fun deleteTask(task: Task) = viewModelScope.launch {
+    fun eliminarTarea(task: Task) = viewModelScope.launch {
         taskRepository.delete(task.id)
     }
 }

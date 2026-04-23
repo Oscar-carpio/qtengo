@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -25,15 +24,21 @@ fun FiltrosProductos(
     onLowStockChange: (Boolean) -> Unit
 ) {
     val unitOptions = listOf("Uds", "kg", "litros", "barriles", "paquetes", "cajas")
+    
+    // Calcular si hay algún filtro activo
+    val isFiltered = searchQuery.isNotBlank() || 
+                    sortBy.isNotEmpty() ||
+                    selectedUnits.isNotEmpty() || 
+                    filterByLowStock
 
-    PymeFilterCard(
+    TarjetaFiltroPyme(
         title = "Buscador y Filtros de Stock",
         searchQuery = searchQuery,
-        onSearchChange = onSearchChange
+        onSearchChange = onSearchChange,
+        isFiltered = isFiltered
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            // Ordenación común
-            OrderButtons(
+            BotonesOrden(
                 sortBy = sortBy,
                 isAscending = isAscending,
                 onSortChange = onSortChange,
@@ -41,7 +46,6 @@ fun FiltrosProductos(
                 amountLabel = "Cantidad"
             )
 
-            // Unidades de medida
             Column {
                 Text("Filtrar por Unidades:", fontSize = 12.sp, style = MaterialTheme.typography.labelMedium)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -58,7 +62,6 @@ fun FiltrosProductos(
                 }
             }
 
-            // Alerta de stock
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = filterByLowStock, onCheckedChange = onLowStockChange)
                 Text("Ver solo poco stock", fontSize = 14.sp)

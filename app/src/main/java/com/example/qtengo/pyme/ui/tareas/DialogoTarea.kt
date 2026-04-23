@@ -2,9 +2,10 @@
  * Diálogo para la creación y edición de tareas en la Agenda Pyme.
  * Incluye validaciones y mensajes de error específicos.
  */
-package com.example.qtengo.pyme.ui.tareas.components
+package com.example.qtengo.pyme.ui.tareas
 
 import android.app.DatePickerDialog
+import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -116,7 +117,7 @@ fun DialogoTarea(
     )
 }
 
-private fun abrirCalendario(context: android.content.Context, fechaActual: String, onDateSelected: (String) -> Unit) {
+private fun abrirCalendario(context: Context, fechaActual: String, onDateSelected: (String) -> Unit) {
     val calendar = Calendar.getInstance()
     val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
     

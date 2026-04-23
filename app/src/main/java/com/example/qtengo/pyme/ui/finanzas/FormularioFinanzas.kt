@@ -1,4 +1,4 @@
-package com.example.qtengo.pyme.ui.finanzas.components
+package com.example.qtengo.pyme.ui.finanzas
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -12,7 +12,7 @@ import androidx.compose.ui.unit.sp
 import com.example.qtengo.core.domain.models.FinanceMovement
 
 @Composable
-fun DialogoFinance(
+fun DialogoFinanzas(
     tipo: String,
     movement: FinanceMovement? = null,
     onDismiss: () -> Unit,

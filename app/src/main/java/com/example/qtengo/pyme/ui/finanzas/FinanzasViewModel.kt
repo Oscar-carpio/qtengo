@@ -61,7 +61,7 @@ class FinanzasViewModel(
      * Inserta un nuevo movimiento (Ingreso o Gasto) en el repositorio.
      * @param movement El objeto con los datos del movimiento.
      */
-    fun insert(movement: FinanceMovement) = viewModelScope.launch {
+    fun insertar(movement: FinanceMovement) = viewModelScope.launch {
         repository.insert(movement)
     }
 
@@ -70,7 +70,7 @@ class FinanzasViewModel(
      * Las nóminas están protegidas para evitar inconsistencias con la lista de empleados.
      * @param movementId El identificador del documento a borrar.
      */
-    fun delete(movementId: String) = viewModelScope.launch {
+    fun eliminar(movementId: String) = viewModelScope.launch {
         if (!movementId.startsWith("nomina_")) {
             repository.delete(movementId)
         }

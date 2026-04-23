@@ -1,6 +1,5 @@
 /**
  * Componentes de filtrado comunes para el módulo Pyme.
- * Contiene la estructura base de las tarjetas de filtro para mantener la consistencia visual.
  */
 package com.example.qtengo.pyme.ui.filtros
 
@@ -19,28 +18,26 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/**
- * Enumeración para los tipos de ordenación disponibles en el módulo Pyme.
- */
 enum class OrderType {
-    NONE, NAME_ASC, NAME_DESC, AMOUNT_ASC, AMOUNT_DESC
+    NONE, NAME_ASC, NAME_DESC
 }
 
-/**
- * Tarjeta base expandible para filtros con un campo de búsqueda común.
- */
 @Composable
-fun PymeFilterCard(
+fun TarjetaFiltroPyme(
     title: String = "Buscador y Filtros",
     searchQuery: String,
     onSearchChange: (String) -> Unit,
+    isFiltered: Boolean = false, // Nuevo parámetro para indicar estado activo
     content: @Composable ColumnScope.() -> Unit = {}
 ) {
     var expanded by remember { mutableStateOf(false) }
+    
+    // Color de fondo: Azul claro si hay filtros, Blanco si no.
+    val backgroundColor = if (isFiltered) Color(0xFFE3F2FD) else Color.White
 
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = backgroundColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -50,13 +47,22 @@ fun PymeFilterCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.FilterList, null, tint = Color(0xFF1A3A6B))
+                    Icon(
+                        Icons.Default.FilterList, 
+                        null, 
+                        tint = if (isFiltered) Color(0xFF1565C0) else Color(0xFF1A3A6B)
+                    )
                     Spacer(Modifier.width(8.dp))
-                    Text(title, fontWeight = FontWeight.Bold, color = Color(0xFF1A3A6B))
+                    Text(
+                        text = if (isFiltered) "$title (Activos)" else title,
+                        fontWeight = FontWeight.Bold, 
+                        color = if (isFiltered) Color(0xFF1565C0) else Color(0xFF1A3A6B)
+                    )
                 }
                 Icon(
                     imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = if (expanded) "Contraer" else "Expandir"
+                    contentDescription = if (expanded) "Contraer" else "Expandir",
+                    tint = if (isFiltered) Color(0xFF1565C0) else Color.Black
                 )
             }
 
@@ -71,7 +77,17 @@ fun PymeFilterCard(
                         label = { Text("Buscar...") },
                         modifier = Modifier.fillMaxWidth(),
                         leadingIcon = { Icon(Icons.Default.Search, null) },
-                        shape = RoundedCornerShape(12.dp)
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { onSearchChange("") }) {
+                                    Icon(Icons.Default.Close, "Limpiar búsqueda", modifier = Modifier.size(18.dp))
+                                }
+                            }
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = if (isFiltered) Color.White else Color.Transparent
+                        )
                     )
                     content()
                 }
@@ -80,11 +96,8 @@ fun PymeFilterCard(
     }
 }
 
-/**
- * Componente común para mostrar botones de ordenación con el estilo del Inventario.
- */
 @Composable
-fun OrderButtons(
+fun BotonesOrden(
     sortBy: String,
     isAscending: Boolean,
     onSortChange: (String, Boolean) -> Unit,
@@ -92,15 +105,29 @@ fun OrderButtons(
     amountLabel: String = "Cantidad"
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Ordenar por:", fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Ordenar por:", fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+            if (sortBy != "" && sortBy != "Registro") {
+                TextButton(
+                    onClick = { onSortChange("", false) },
+                    contentPadding = PaddingValues(0.dp),
+                    modifier = Modifier.height(20.dp)
+                ) {
+                    Text("Limpiar", fontSize = 11.sp, color = Color(0xFF1565C0))
+                }
+            }
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            // Botón de Nombre
             FilterChip(
                 selected = sortBy == "Nombre",
                 onClick = {
                     if (sortBy == "Nombre") {
                         if (isAscending) onSortChange("Nombre", false)
-                        else onSortChange("Registro", true) // Al desmarcar vuelve a Registro
+                        else onSortChange("", false)
                     } else {
                         onSortChange("Nombre", true)
                     }
@@ -120,14 +147,13 @@ fun OrderButtons(
                 }
             )
 
-            // Botón de Cantidad (opcional)
             if (showAmount) {
                 FilterChip(
                     selected = sortBy == amountLabel,
                     onClick = {
                         if (sortBy == amountLabel) {
                             if (isAscending) onSortChange(amountLabel, false)
-                            else onSortChange("Registro", true) // Al desmarcar vuelve a Registro
+                            else onSortChange("", false)
                         } else {
                             onSortChange(amountLabel, true)
                         }

@@ -9,5 +9,6 @@ data class Employee(
     val email: String = "",
     val startDate: String = "",
     val profile: String = "",
-    val details: String = ""
+    val details: String = "",
+    val timestamp: Long = System.currentTimeMillis()
 )

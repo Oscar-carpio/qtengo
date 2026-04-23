@@ -7,5 +7,6 @@ data class FinanceMovement(
     val type: String = "", // "INGRESO" o "GASTO"
     val date: String = "",
     val profile: String = "", // "PYME"
-    val notes: String = ""
+    val notes: String = "",
+    val timestamp: Long = System.currentTimeMillis()
 )

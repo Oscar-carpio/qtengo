@@ -1,10 +1,4 @@
-/**
- * Diálogo para la gestión de datos de empleados.
- * 
- * Este componente centraliza la lógica de entrada de datos para altas y ediciones.
- * Implementa validaciones en tiempo real y mensajes de error específicos.
- */
-package com.example.qtengo.pyme.ui.empleados.components
+package com.example.qtengo.pyme.ui.proveedores
 
 import android.util.Patterns
 import androidx.compose.foundation.layout.*
@@ -16,30 +10,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.qtengo.core.domain.models.Employee
+import com.example.qtengo.core.domain.models.Supplier
 
-/**
- * Composable que muestra el formulario de empleado con validaciones.
- */
 @Composable
-fun DialogoEmpleado(
+fun DialogoProveedor(
     titulo: String,
-    employee: Employee? = null,
+    supplier: Supplier? = null,
     onDismiss: () -> Unit, 
-    onConfirm: (String, String, Double, String, String, String) -> Unit
+    onConfirm: (String, String, String, String, String) -> Unit
 ) {
-    var name by remember { mutableStateOf(employee?.name ?: "") }
-    var pos by remember { mutableStateOf(employee?.position ?: "") }
-    var sal by remember { mutableStateOf(employee?.salary?.toString() ?: "") }
-    var phone by remember { mutableStateOf(employee?.phone ?: "") }
-    var email by remember { mutableStateOf(employee?.email ?: "") }
-    var notes by remember { mutableStateOf(employee?.details ?: "") }
+    var name by remember { mutableStateOf(supplier?.name ?: "") }
+    var contact by remember { mutableStateOf(supplier?.contactName ?: "") }
+    var phone by remember { mutableStateOf(supplier?.phone ?: "") }
+    var email by remember { mutableStateOf(supplier?.email ?: "") }
+    var description by remember { mutableStateOf(supplier?.category ?: "") }
 
-    // Estados de error
     var nameError by remember { mutableStateOf<String?>(null) }
     var contactError by remember { mutableStateOf<String?>(null) }
     var emailError by remember { mutableStateOf<String?>(null) }
-    var salaryError by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = { }, // Evita el cierre al pulsar fuera
@@ -52,41 +40,24 @@ fun DialogoEmpleado(
                         name = it
                         if (it.isNotBlank()) nameError = null
                     }, 
-                    label = { Text("Nombre Completo *") }, 
+                    label = { Text("Empresa *") }, 
                     modifier = Modifier.fillMaxWidth(),
                     isError = nameError != null,
                     supportingText = { nameError?.let { Text(it, color = Color.Red, fontSize = 12.sp) } }
                 )
                 
                 OutlinedTextField(
-                    value = pos, 
-                    onValueChange = { pos = it }, 
-                    label = { Text("Cargo") }, 
+                    value = contact, 
+                    onValueChange = { contact = it }, 
+                    label = { Text("Nombre de contacto") }, 
                     modifier = Modifier.fillMaxWidth()
                 )
                 
                 OutlinedTextField(
-                    value = sal, 
-                    onValueChange = { input ->
-                        if (input.isEmpty() || input.all { it.isDigit() || it == '.' }) {
-                            if (input.count { it == '.' } <= 1) {
-                                sal = input
-                                salaryError = null
-                            }
-                        }
-                    }, 
-                    label = { Text("Salario Mensual") }, 
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    isError = salaryError != null,
-                    supportingText = { salaryError?.let { Text(it, color = Color.Red, fontSize = 12.sp) } }
-                )
-                
-                OutlinedTextField(
                     value = phone, 
-                    onValueChange = { 
-                        if (it.all { char -> char.isDigit() || char == '+' }) {
-                            phone = it
+                    onValueChange = { input -> 
+                        if (input.all { it.isDigit() || it == '+' }) {
+                            phone = input
                             contactError = null
                         }
                     }, 
@@ -95,7 +66,7 @@ fun DialogoEmpleado(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     isError = contactError != null
                 )
-
+                
                 OutlinedTextField(
                     value = email, 
                     onValueChange = { 
@@ -103,7 +74,7 @@ fun DialogoEmpleado(
                         emailError = null
                         contactError = null
                     }, 
-                    label = { Text("Email de contacto") }, 
+                    label = { Text("Email") }, 
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     isError = emailError != null || contactError != null,
@@ -112,11 +83,11 @@ fun DialogoEmpleado(
                         else if (contactError != null) Text(contactError!!, color = Color.Red, fontSize = 12.sp)
                     }
                 )
-
+                
                 OutlinedTextField(
-                    value = notes, 
-                    onValueChange = { notes = it }, 
-                    label = { Text("Notas / Detalles") }, 
+                    value = description, 
+                    onValueChange = { description = it }, 
+                    label = { Text("Descripción / Detalles") }, 
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -127,7 +98,7 @@ fun DialogoEmpleado(
                     var hasError = false
                     
                     if (name.isBlank()) {
-                        nameError = "El nombre es obligatorio"
+                        nameError = "El nombre de la empresa es obligatorio"
                         hasError = true
                     }
                     
@@ -145,21 +116,13 @@ fun DialogoEmpleado(
                         emailError = "Formato de email inválido"
                         hasError = true
                     }
-                    
-                    val salarioValor = sal.toDoubleOrNull()
-                    if (sal.isNotEmpty() && salarioValor == null) {
-                        salaryError = "Salario inválido"
-                        hasError = true
-                    }
 
                     if (!hasError) {
-                        onConfirm(name, pos, salarioValor ?: 0.0, phone, email, notes)
+                        onConfirm(name, contact, phone, email, description) 
                     }
                 }
             ) { Text("Guardar") }
         },
-        dismissButton = { 
-            TextButton(onClick = onDismiss) { Text("Cancelar") } 
-        }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
     )
 }

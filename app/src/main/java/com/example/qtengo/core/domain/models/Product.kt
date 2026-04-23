@@ -9,5 +9,6 @@ data class Product(
     val category: String = "",
     val profile: String = "",  // FAMILIA | HOSTELERIA | PYME
     val unit: String = "",     // unidades, kg, litros...
-    val notes: String = ""
+    val notes: String = "",
+    val timestamp: Long = System.currentTimeMillis()
 )
