@@ -71,8 +71,16 @@ class ProductosViewModel(
             }.maxOrNull()?.plus(1) ?: 1
         }
         
-        val unitInitial = if (product.unit.isNotBlank()) product.unit.take(1).uppercase() else "U"
-        val generatedCustomId = String.format("%03d%s", nextNumber, unitInitial)
+        val letraUnidad = when (product.unit.lowercase()) {
+            "uds" -> "U"
+            "kg" -> "K"
+            "litros" -> "L"
+            "barriles" -> "B"
+            "paquetes" -> "P"
+            "cajas" -> "C"
+            else -> if (product.unit.isNotBlank()) product.unit.take(1).uppercase() else "U"
+        }
+        val generatedCustomId = String.format("%03d%s", nextNumber, letraUnidad)
         
         val productWithId = product.copy(customId = generatedCustomId)
         

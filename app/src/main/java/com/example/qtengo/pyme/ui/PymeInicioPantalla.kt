@@ -60,7 +60,7 @@ fun PymeInicioPantalla(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Marcadores de indicadores clave (Dashboard) usando el componente unificado
+        // Marcadores de indicadores clave
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), 
             horizontalArrangement = Arrangement.spacedBy(16.dp)
