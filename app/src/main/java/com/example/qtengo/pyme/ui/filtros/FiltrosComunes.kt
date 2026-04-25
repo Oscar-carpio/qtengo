@@ -27,7 +27,7 @@ fun TarjetaFiltroPyme(
     title: String = "Buscador y Filtros",
     searchQuery: String,
     onSearchChange: (String) -> Unit,
-    isFiltered: Boolean = false, // Nuevo parámetro para indicar estado activo
+    isFiltered: Boolean = false,
     content: @Composable ColumnScope.() -> Unit = {}
 ) {
     var expanded by remember { mutableStateOf(false) }

@@ -72,22 +72,31 @@ fun TareasPantalla(
 
         val matchesDate = if (dateFilterEnabled) task.date == selectedDate else true
 
-        val matchesCreation = run {
-            val createdDate = try { sdf.parse(task.createdAt) } catch (_: Exception) { null }
-            if (createdDate == null) {
+        val matchesScheduledPeriod = run {
+            val scheduledDate = try { sdf.parse(task.date) } catch (_: Exception) { null }
+            if (scheduledDate == null) {
                 filterMonth == 0 && filterYear == "Todos"
             } else {
-                val cal = Calendar.getInstance().apply { time = createdDate }
+                val cal = Calendar.getInstance().apply { time = scheduledDate }
                 val mMatch = if (filterMonth == 0) true else cal.get(Calendar.MONTH) == (filterMonth - 1)
                 val yMatch = if (filterYear == "Todos") true else cal.get(Calendar.YEAR).toString() == filterYear
                 mMatch && yMatch
             }
         }
 
-        matchesSearch && matchesStatus && matchesDate && matchesCreation
+        matchesSearch && matchesStatus && matchesDate && matchesScheduledPeriod
     }.let { list ->
         if (sortBy == "") {
-            list.sortedByDescending { it.timestamp }
+            list.sortedWith(
+                compareByDescending<Task> { 
+                    when (it.priority.uppercase()) {
+                        "ALTA" -> 3
+                        "MEDIA" -> 2
+                        "BAJA" -> 1
+                        else -> 0
+                    }
+                }.thenByDescending { it.timestamp }
+            )
         } else {
             list.sortedWith { t1, t2 ->
                 val res = when (sortBy) {
@@ -98,12 +107,12 @@ fun TareasPantalla(
                     if (isAscending) res else -res
                 } else {
                     compareBy<Task> { it.date.isEmpty() }
-                        .thenBy { 
+                        .thenByDescending { 
                             when (it.priority.uppercase()) {
-                                "ALTA" -> 0
-                                "MEDIA" -> 1
-                                "BAJA" -> 2
-                                else -> 3
+                                "ALTA" -> 3
+                                "MEDIA" -> 2
+                                "BAJA" -> 1
+                                else -> 0
                             }
                         }
                         .thenByDescending { it.timestamp }
@@ -140,8 +149,18 @@ fun TareasPantalla(
         )
 
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            TarjetaEstadisticaPyme(titulo = "Visibles", valor = "${filteredTasks.size}", color = Color(0xFF1565C0), modifier = Modifier.weight(1f))
-            TarjetaEstadisticaPyme(titulo = "Pendientes", valor = "${allTasks.count { !it.isCompleted }}", color = Color(0xFFD32F2F), modifier = Modifier.weight(1f))
+            TarjetaEstadisticaPyme(
+                titulo = "Disponibles", 
+                valor = "${allTasks.count { !it.isCompleted }}", 
+                color = Color(0xFF1565C0), 
+                modifier = Modifier.weight(1f)
+            )
+            TarjetaEstadisticaPyme(
+                titulo = "Realizadas", 
+                valor = "${allTasks.count { it.isCompleted }}", 
+                color = Color(0xFF2E7D32), 
+                modifier = Modifier.weight(1f)
+            )
         }
 
         Spacer(Modifier.height(16.dp))

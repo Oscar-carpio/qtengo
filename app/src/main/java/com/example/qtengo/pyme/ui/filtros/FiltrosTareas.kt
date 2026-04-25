@@ -84,7 +84,7 @@ fun FiltrosTareas(
             }
 
             Column {
-                Text("Filtrar por creación:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                Text("Filtrar por periodo programado:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ExposedDropdownMenuBox(
                         expanded = monthExpanded,
