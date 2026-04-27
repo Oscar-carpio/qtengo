@@ -112,7 +112,7 @@ fun AddInventarioScreen(
                             Text(errorCantidad, color = MaterialTheme.colorScheme.error)
                     }
                 )
-                // FIX WARN — validamos que minStock sea un entero no negativo
+                //  — validamos que minStock sea un entero no negativo
                 OutlinedTextField(
                     value = minStock,
                     onValueChange = {
