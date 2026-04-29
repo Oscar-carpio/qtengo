@@ -16,13 +16,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.qtengo.core.ui.components.QtengoTopBar
 
 data class RestauracionMenuOption(val title: String, val icon: String, val color: Color)
 
 @Composable
-fun RestauracionHomeScreen(onMenuSelected: (String) -> Unit, onBack: () -> Unit) {
-
-    // Fíjate que los títulos coinciden exactamente con los que pusimos en el MainActivity
+fun RestauracionHomeScreen(
+    onMenuSelected: (String) -> Unit,
+    onLogout: () -> Unit,
+    onChangeProfile: () -> Unit
+) {
     val menuOptions = listOf(
         RestauracionMenuOption("Carta / Menú del día", "🍽️", Color(0xFF1565C0)),
         RestauracionMenuOption("Stock de cocina", "🥘", Color(0xFF1976D2)),
@@ -35,33 +38,11 @@ fun RestauracionHomeScreen(onMenuSelected: (String) -> Unit, onBack: () -> Unit)
             .fillMaxSize()
             .background(Color(0xFFF4F7FB))
     ) {
-        // Cabecera (TopBar personalizada)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color(0xFF1A3A6B))
-                .padding(24.dp)
-        ) {
-            IconButton(
-                onClick = { onBack() },
-                modifier = Modifier.align(Alignment.CenterStart)
-            ) {
-                Text(text = "←", fontSize = 24.sp, color = Color.White)
-            }
-            Column(modifier = Modifier.align(Alignment.Center)) {
-                Text(
-                    text = "Q-Tengo",
-                    fontSize = 14.sp,
-                    color = Color.White.copy(alpha = 0.7f)
-                )
-                Text(
-                    text = "Perfil Restauración",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            }
-        }
+        QtengoTopBar(
+            title = "Perfil Restauración",
+            onLogout = onLogout,
+            onChangeProfile = onChangeProfile
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -72,7 +53,6 @@ fun RestauracionHomeScreen(onMenuSelected: (String) -> Unit, onBack: () -> Unit)
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
         )
 
-        // Cuadrícula de botones
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             contentPadding = PaddingValues(16.dp),
@@ -80,11 +60,7 @@ fun RestauracionHomeScreen(onMenuSelected: (String) -> Unit, onBack: () -> Unit)
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(menuOptions) { option ->
-                RestauracionMenuCard(
-                    option = option,
-                    // Aquí es donde ocurre la magia de la navegación
-                    onClick = { onMenuSelected(option.title) }
-                )
+                RestauracionMenuCard(option = option, onClick = { onMenuSelected(option.title) })
             }
         }
     }

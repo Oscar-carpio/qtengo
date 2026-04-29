@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.qtengo.core.ui.components.QtengoTopBar
 
+//Definición de las opciones de menú
 data class FamiliarMenuOption(val title: String, val icon: String, val color: Color)
 
 @Composable

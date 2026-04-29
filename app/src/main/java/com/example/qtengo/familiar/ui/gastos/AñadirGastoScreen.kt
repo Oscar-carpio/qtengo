@@ -83,7 +83,7 @@ fun AddGastoScreen(
                 value = cantidad,
                 onValueChange = { input ->
                     cantidad = input
-                    // FIX WARN — validamos que sea positivo y mayor que 0
+                    //  — validamos que sea positivo y mayor que 0
                     errorCantidad = input.toDoubleOrNull()?.let { it <= 0 } ?: input.isNotBlank()
                 },
                 label = { Text("Cantidad (€)") },

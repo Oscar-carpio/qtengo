@@ -24,6 +24,7 @@ fun NuevaListaDialog(
                 singleLine = true
             )
         },
+        //Botón de confirmación.
         confirmButton = {
             TextButton(onClick = {
                 if (nombre.isNotBlank()) {
@@ -32,6 +33,7 @@ fun NuevaListaDialog(
                 }
             }) { Text("Crear") }
         },
+        //Botón de cancelar
         dismissButton = {
             TextButton(onClick = {
                 onDismiss()

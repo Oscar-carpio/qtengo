@@ -46,7 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.qtengo.data.model.restauracion.RestauracionReserva
+import com.example.qtengo.restauracion.ui.reservas.RestauracionReserva
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -66,6 +66,19 @@ fun ReservasScreen(
 
     LaunchedEffect(Unit) {
         viewModel.cargarReservas()
+    }
+    val error by viewModel.error.collectAsState()
+    error?.let {
+        AlertDialog(
+            onDismissRequest = { viewModel.clearError() },
+            title = { Text("Error") },
+            text = { Text(it) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.clearError() }) {
+                    Text("Aceptar")
+                }
+            }
+        )
     }
 
     Scaffold(
