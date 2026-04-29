@@ -13,12 +13,12 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
-data class RestauracionProveedor(
+data class Proveedor(
     val id: String = "",
     val nombre: String = "",
     val telefono: String = "",
     val email: String = "",
-    val direccion: String = "",
+    val direccion: String = "",   // antes "productos" en v1 — unificado como "direccion"
     val notas: String = ""
 )
 
@@ -27,39 +27,23 @@ class ProveedoresRestauracionViewModel : ViewModel() {
     private val db = FirebaseFirestore.getInstance()
     private val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
-    private val _proveedores = MutableStateFlow<List<RestauracionProveedor>>(emptyList())
-    val proveedores: StateFlow<List<RestauracionProveedor>> = _proveedores
+    private val _proveedores = MutableStateFlow<List<Proveedor>>(emptyList())
+    val proveedores: StateFlow<List<Proveedor>> = _proveedores
 
     private val _filtro = MutableStateFlow("")
     val filtro: StateFlow<String> = _filtro
 
-    // ✅ Canal de errores estándar
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
-    // ✅ isLoading
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
     private var proveedoresListener: ListenerRegistration? = null
 
-    fun clearError() { _error.value = null }
+    // ─── Filtro combinado ────────────────────────────────────────────────────
 
-    // ✅ requireUid() centralizado
-    private fun requireUid(): String? {
-        if (uid.isBlank()) {
-            _error.value = "Usuario no autenticado. Por favor, inicia sesión de nuevo."
-            return null
-        }
-        return uid
-    }
-
-    // ✅ proveedoresRef() sin parámetro — usa uid del ViewModel
-    private fun proveedoresRef() =
-        db.collection("usuarios").document(uid).collection("proveedoresRestauracion")
-
-    // ✅ Filtro combinado — se mantiene la buena idea de Fran
-    val proveedoresFiltrados: StateFlow<List<RestauracionProveedor>> =
+    val proveedoresFiltrados: StateFlow<List<Proveedor>> =
         combine(_proveedores, _filtro) { lista, texto ->
             val filtroLimpio = texto.trim()
             if (filtroLimpio.isBlank()) {
@@ -83,6 +67,23 @@ class ProveedoresRestauracionViewModel : ViewModel() {
         _filtro.value = valor
     }
 
+    fun clearError() {
+        _error.value = null
+    }
+
+    // ─── Helpers internos ────────────────────────────────────────────────────
+
+    private fun requireUid(): String? {
+        if (uid.isBlank()) {
+            _error.value = "Usuario no autenticado. Por favor, inicia sesión de nuevo."
+            return null
+        }
+        return uid
+    }
+
+    private fun proveedoresRef() =
+        db.collection("usuarios").document(uid).collection("proveedoresRestauracion")
+
     // ─── Carga de datos ──────────────────────────────────────────────────────
 
     fun cargarProveedores() {
@@ -90,14 +91,14 @@ class ProveedoresRestauracionViewModel : ViewModel() {
         proveedoresListener?.remove()
         proveedoresListener = db.collection("usuarios").document(uid)
             .collection("proveedoresRestauracion")
-            .orderBy("nombre")
+            .orderBy("nombre")                      // ordenación en servidor
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
                     _error.value = "Error al cargar proveedores: ${e.message}"
                     return@addSnapshotListener
                 }
                 _proveedores.value = snapshot?.documents?.map { doc ->
-                    RestauracionProveedor(
+                    Proveedor(
                         id = doc.id,
                         nombre = doc.getString("nombre") ?: "",
                         telefono = doc.getString("telefono") ?: "",
@@ -111,23 +112,17 @@ class ProveedoresRestauracionViewModel : ViewModel() {
 
     // ─── Escritura ───────────────────────────────────────────────────────────
 
-    fun agregarProveedor(
-        nombre: String,
-        telefono: String,
-        email: String,
-        direccion: String,
-        notas: String = ""
-    ) {
+    fun agregarProveedor(proveedor: Proveedor) {
         requireUid() ?: return
         viewModelScope.launch {
             _isLoading.value = true
             try {
                 val data = mapOf(
-                    "nombre" to nombre.trim(),
-                    "telefono" to telefono.trim(),
-                    "email" to email.trim(),
-                    "direccion" to direccion.trim(),
-                    "notas" to notas.trim()
+                    "nombre" to proveedor.nombre.trim(),
+                    "telefono" to proveedor.telefono.trim(),
+                    "email" to proveedor.email.trim(),
+                    "direccion" to proveedor.direccion.trim(),
+                    "notas" to proveedor.notas.trim()
                 )
                 proveedoresRef().add(data).await()
             } catch (e: Exception) {
@@ -138,24 +133,17 @@ class ProveedoresRestauracionViewModel : ViewModel() {
         }
     }
 
-    fun editarProveedor(
-        id: String,
-        nombre: String,
-        telefono: String,
-        email: String,
-        direccion: String,
-        notas: String = ""
-    ) {
+    fun editarProveedor(id: String, proveedor: Proveedor) {
         requireUid() ?: return
         viewModelScope.launch {
             _isLoading.value = true
             try {
                 val data = mapOf(
-                    "nombre" to nombre.trim(),
-                    "telefono" to telefono.trim(),
-                    "email" to email.trim(),
-                    "direccion" to direccion.trim(),
-                    "notas" to notas.trim()
+                    "nombre" to proveedor.nombre.trim(),
+                    "telefono" to proveedor.telefono.trim(),
+                    "email" to proveedor.email.trim(),
+                    "direccion" to proveedor.direccion.trim(),
+                    "notas" to proveedor.notas.trim()
                 )
                 proveedoresRef().document(id).update(data).await()
             } catch (e: Exception) {

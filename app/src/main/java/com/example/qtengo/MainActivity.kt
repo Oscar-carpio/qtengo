@@ -48,7 +48,7 @@ import com.example.qtengo.restauracion.ui.reservas.ReservasScreen
 import com.example.qtengo.restauracion.ui.proveedores.ProveedoresRestauracionScreen
 import com.example.qtengo.restauracion.ui.home.RestauracionHomeScreen
 import com.example.qtengo.restauracion.ui.reservas.RestauracionReserva
-import com.example.qtengo.restauracion.ui.proveedores.RestauracionProveedor
+import com.example.qtengo.restauracion.ui.proveedores.Proveedor
 
 
 

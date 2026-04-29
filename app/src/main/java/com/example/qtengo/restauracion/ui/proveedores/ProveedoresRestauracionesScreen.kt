@@ -29,22 +29,41 @@ fun ProveedoresRestauracionScreen(
     onBack: () -> Unit,
     onLogout: () -> Unit,
     onChangeProfile: () -> Unit,
-    viewModel: ProveedoresViewModel = viewModel()
+    viewModel: ProveedoresRestauracionViewModel = viewModel()
 ) {
-    val proveedores by viewModel.proveedores.collectAsState()
+    val proveedores by viewModel.proveedoresFiltrados.collectAsState()
+    val filtro by viewModel.filtro.collectAsState()
+    val error by viewModel.error.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+
     var showAddDialog by remember { mutableStateOf(false) }
     var proveedorAEditar by remember { mutableStateOf<Proveedor?>(null) }
+    var proveedorAEliminar by remember { mutableStateOf<Proveedor?>(null) }
 
     LaunchedEffect(Unit) { viewModel.cargarProveedores() }
 
+    // ─── Diálogo de error ────────────────────────────────────────────────────
+    error?.let {
+        AlertDialog(
+            onDismissRequest = { viewModel.clearError() },
+            title = { Text("Error") },
+            text = { Text(it) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.clearError() }) { Text("Aceptar") }
+            }
+        )
+    }
+
+    // ─── Diálogo añadir ──────────────────────────────────────────────────────
     if (showAddDialog) {
         ProveedorDialog(
             proveedor = null,
-            onConfirm = { viewModel.añadirProveedor(it); showAddDialog = false },
+            onConfirm = { viewModel.agregarProveedor(it); showAddDialog = false },
             onDismiss = { showAddDialog = false }
         )
     }
 
+    // ─── Diálogo editar ──────────────────────────────────────────────────────
     proveedorAEditar?.let { proveedor ->
         ProveedorDialog(
             proveedor = proveedor,
@@ -53,6 +72,25 @@ fun ProveedoresRestauracionScreen(
         )
     }
 
+    // ─── Diálogo confirmar eliminación ───────────────────────────────────────
+    proveedorAEliminar?.let { proveedor ->
+        AlertDialog(
+            onDismissRequest = { proveedorAEliminar = null },
+            title = { Text("Eliminar proveedor") },
+            text = { Text("¿Deseas eliminar a \"${proveedor.nombre}\"? Esta acción no se puede deshacer.") },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.eliminarProveedor(proveedor.id); proveedorAEliminar = null },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text("Eliminar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { proveedorAEliminar = null }) { Text("Cancelar") }
+            }
+        )
+    }
+
+    // ─── Layout principal ────────────────────────────────────────────────────
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -65,9 +103,33 @@ fun ProveedoresRestauracionScreen(
             onChangeProfile = onChangeProfile
         )
 
+        // Buscador
+        OutlinedTextField(
+            value = filtro,
+            onValueChange = { viewModel.actualizarFiltro(it) },
+            label = { Text("Buscar proveedor") },
+            placeholder = { Text("Nombre, teléfono, email o dirección") },
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        )
+
+        // Indicador de carga
+        if (isLoading) {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
+
+        // Lista o estado vacío
         if (proveedores.isEmpty()) {
-            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Text("No hay proveedores. ¡Añade uno!", color = Color.Gray)
+            Box(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (filtro.isBlank()) "No hay proveedores. ¡Añade uno!" else "No se encontraron proveedores.",
+                    color = Color.Gray
+                )
             }
         } else {
             LazyColumn(
@@ -75,19 +137,22 @@ fun ProveedoresRestauracionScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(proveedores) { proveedor ->
+                items(proveedores, key = { it.id }) { proveedor ->
                     ProveedorCard(
                         proveedor = proveedor,
                         onEdit = { proveedorAEditar = proveedor },
-                        onDelete = { viewModel.eliminarProveedor(proveedor.id) }
+                        onDelete = { proveedorAEliminar = proveedor }   // confirmación antes de borrar
                     )
                 }
             }
         }
 
+        // Botón añadir
         Button(
             onClick = { showAddDialog = true },
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A3A6B))
         ) {
@@ -97,6 +162,8 @@ fun ProveedoresRestauracionScreen(
         }
     }
 }
+
+// ─── Card ────────────────────────────────────────────────────────────────────
 
 @Composable
 fun ProveedorCard(proveedor: Proveedor, onEdit: () -> Unit, onDelete: () -> Unit) {
@@ -109,6 +176,8 @@ fun ProveedorCard(proveedor: Proveedor, onEdit: () -> Unit, onDelete: () -> Unit
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+
+            // Cabecera: icono + nombre + acciones
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
@@ -120,9 +189,14 @@ fun ProveedorCard(proveedor: Proveedor, onEdit: () -> Unit, onDelete: () -> Unit
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(proveedor.nombre, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A3A6B))
-                    if (proveedor.productos.isNotBlank()) {
-                        Text(proveedor.productos, fontSize = 12.sp, color = Color.Gray)
+                    Text(
+                        proveedor.nombre,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1A3A6B)
+                    )
+                    if (proveedor.direccion.isNotBlank()) {
+                        Text(proveedor.direccion, fontSize = 12.sp, color = Color.Gray)
                     }
                 }
                 IconButton(onClick = onEdit) {
@@ -133,6 +207,7 @@ fun ProveedorCard(proveedor: Proveedor, onEdit: () -> Unit, onDelete: () -> Unit
                 }
             }
 
+            // Contacto: teléfono y email con acciones directas
             if (proveedor.telefono.isNotBlank() || proveedor.email.isNotBlank()) {
                 Spacer(modifier = Modifier.height(10.dp))
                 Divider()
@@ -167,6 +242,7 @@ fun ProveedorCard(proveedor: Proveedor, onEdit: () -> Unit, onDelete: () -> Unit
                 }
             }
 
+            // Notas
             if (proveedor.notas.isNotBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(proveedor.notas, fontSize = 12.sp, color = Color.Gray)
@@ -175,13 +251,19 @@ fun ProveedorCard(proveedor: Proveedor, onEdit: () -> Unit, onDelete: () -> Unit
     }
 }
 
+// ─── Dialog ──────────────────────────────────────────────────────────────────
+
 @Composable
-fun ProveedorDialog(proveedor: Proveedor?, onConfirm: (Proveedor) -> Unit, onDismiss: () -> Unit) {
-    var nombre by remember { mutableStateOf(proveedor?.nombre ?: "") }
-    var telefono by remember { mutableStateOf(proveedor?.telefono ?: "") }
-    var email by remember { mutableStateOf(proveedor?.email ?: "") }
-    var productos by remember { mutableStateOf(proveedor?.productos ?: "") }
-    var notas by remember { mutableStateOf(proveedor?.notas ?: "") }
+fun ProveedorDialog(
+    proveedor: Proveedor?,
+    onConfirm: (Proveedor) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var nombre by remember(proveedor) { mutableStateOf(proveedor?.nombre ?: "") }
+    var telefono by remember(proveedor) { mutableStateOf(proveedor?.telefono ?: "") }
+    var email by remember(proveedor) { mutableStateOf(proveedor?.email ?: "") }
+    var direccion by remember(proveedor) { mutableStateOf(proveedor?.direccion ?: "") }
+    var notas by remember(proveedor) { mutableStateOf(proveedor?.notas ?: "") }
     var errorNombre by remember { mutableStateOf("") }
 
     AlertDialog(
@@ -192,7 +274,7 @@ fun ProveedorDialog(proveedor: Proveedor?, onConfirm: (Proveedor) -> Unit, onDis
                 OutlinedTextField(
                     value = nombre,
                     onValueChange = { nombre = it; errorNombre = "" },
-                    label = { Text("Nombre del proveedor") },
+                    label = { Text("Nombre del proveedor *") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     isError = errorNombre.isNotEmpty(),
@@ -216,9 +298,9 @@ fun ProveedorDialog(proveedor: Proveedor?, onConfirm: (Proveedor) -> Unit, onDis
                     singleLine = true
                 )
                 OutlinedTextField(
-                    value = productos,
-                    onValueChange = { productos = it },
-                    label = { Text("Productos que suministra") },
+                    value = direccion,
+                    onValueChange = { direccion = it },
+                    label = { Text("Dirección (opcional)") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -233,16 +315,26 @@ fun ProveedorDialog(proveedor: Proveedor?, onConfirm: (Proveedor) -> Unit, onDis
         },
         confirmButton = {
             TextButton(onClick = {
-                if (nombre.isBlank()) { errorNombre = "El nombre es obligatorio"; return@TextButton }
-                onConfirm(Proveedor(
-                    nombre = nombre.trim(),
-                    telefono = telefono.trim(),
-                    email = email.trim(),
-                    productos = productos.trim(),
-                    notas = notas.trim()
-                ))
-            }) { Text(if (proveedor == null) "Añadir" else "Guardar") }
+                if (nombre.isBlank()) {
+                    errorNombre = "El nombre es obligatorio"
+                    return@TextButton
+                }
+                onConfirm(
+                    Proveedor(
+                        id = proveedor?.id ?: "",
+                        nombre = nombre.trim(),
+                        telefono = telefono.trim(),
+                        email = email.trim(),
+                        direccion = direccion.trim(),
+                        notas = notas.trim()
+                    )
+                )
+            }) {
+                Text(if (proveedor == null) "Añadir" else "Guardar")
+            }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
+        }
     )
 }
