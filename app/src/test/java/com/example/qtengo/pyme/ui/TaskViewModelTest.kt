@@ -28,6 +28,12 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+/**
+ * Tests unitarios para [TaskViewModel].
+ * 
+ * Valida la integración de la agenda diaria, asegurando que el cambio de fecha
+ * sincronice correctamente tareas, movimientos financieros e inventario.
+ */
 @ExperimentalCoroutinesApi
 class TaskViewModelTest {
 
@@ -58,8 +64,12 @@ class TaskViewModelTest {
         Dispatchers.resetMain()
     }
 
+    /**
+     * Valida que al seleccionar una fecha en el calendario, el ViewModel
+     * actualice su estado y dispare las consultas correspondientes a los repositorios.
+     */
     @Test
-    fun selectDate_actualizaLaFechaSeleccionadaYDisparaNuevasConsultas() = runTest {
+    fun seleccionarFecha_actualizaLaFechaSeleccionadaYDisparaNuevasConsultas() = runTest {
         val nuevaFecha = "25/12/2024"
         val tareasMock = listOf(Task(id = "1", title = "Tarea Navidad", date = nuevaFecha))
 
@@ -68,7 +78,7 @@ class TaskViewModelTest {
         val observer = mockk<Observer<List<Task>>>(relaxed = true)
         viewModel.tasksByDate.observeForever(observer)
 
-        viewModel.selectDate(nuevaFecha)
+        viewModel.seleccionarFecha(nuevaFecha)
         advanceUntilIdle()
 
         Assert.assertEquals(nuevaFecha, viewModel.selectedDate.value)
@@ -77,11 +87,15 @@ class TaskViewModelTest {
         viewModel.tasksByDate.removeObserver(observer)
     }
 
+    /**
+     * Verifica que al crear una tarea, se le asigne automáticamente la fecha de hoy
+     * como fecha de creación para auditoría.
+     */
     @Test
-    fun insertTask_llamaAlRepositorioConLaFechaDeCreacionDeHoy() = runTest {
+    fun insertarTarea_llamaAlRepositorioConLaFechaDeCreacionDeHoy() = runTest {
         val today = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
 
-        viewModel.insertTask("Comprar pan", "Descripción", "ALTA", "30/12/2024")
+        viewModel.insertarTarea("Comprar pan", "Descripción", "ALTA", "30/12/2024")
         advanceUntilIdle()
 
         coVerify {
@@ -93,19 +107,26 @@ class TaskViewModelTest {
         }
     }
 
+    /**
+     * Asegura que las operaciones CRUD de tareas se deleguen al repositorio.
+     */
     @Test
-    fun updateTaskYDeleteTask_llamanCorrectamenteAlRepositorio() = runTest {
+    fun actualizarTareaYEliminarTarea_llamanCorrectamenteAlRepositorio() = runTest {
         val task = Task(id = "task_1", title = "Test")
 
-        viewModel.updateTask(task)
+        viewModel.actualizarTarea(task)
         advanceUntilIdle()
         coVerify { taskRepository.update(task) }
 
-        viewModel.deleteTask(task)
+        viewModel.eliminarTarea(task)
         advanceUntilIdle()
         coVerify { taskRepository.delete("task_1") }
     }
 
+    /**
+     * Comprueba que los flujos de finanzas y stock reaccionen automáticamente
+     * cuando cambia la fecha seleccionada (patrón switchMap).
+     */
     @Test
     fun financeByDateYStockByDate_reaccionanAlCambioDeFecha() = runTest {
         val fecha = "01/01/2024"
@@ -114,7 +135,7 @@ class TaskViewModelTest {
         viewModel.financeByDate.observeForever {}
         viewModel.stockByDate.observeForever {}
         
-        viewModel.selectDate(fecha)
+        viewModel.seleccionarFecha(fecha)
         advanceUntilIdle()
 
         // Verificar que se llamó a los repositorios correspondientes con esa fecha

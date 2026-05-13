@@ -23,6 +23,12 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
+/**
+ * Tests unitarios para [ProductosViewModel].
+ * 
+ * Verifica la lógica de inventario, incluyendo el filtrado de stock bajo
+ * y la generación automática de movimientos de auditoría.
+ */
 @ExperimentalCoroutinesApi
 class ProductosViewModelTest {
 
@@ -46,6 +52,10 @@ class ProductosViewModelTest {
         Dispatchers.resetMain()
     }
 
+    /**
+     * Valida que el filtro de stock bajo identifique correctamente los productos
+     * que están por debajo de su margen mínimo de seguridad.
+     */
     @Test
     fun lowStockProducts_filtraCorrectamenteProductosConPocoStock() = runTest {
         val productos = listOf(
@@ -64,11 +74,15 @@ class ProductosViewModelTest {
         Assert.assertEquals("Poco Stock", result?.get(0)?.name)
     }
 
+    /**
+     * Comprueba que cualquier cambio en la cantidad de un producto genere
+     * automáticamente un registro en el historial de movimientos de stock.
+     */
     @Test
-    fun updateQuantity_registraUnMovimientoDeStockSiLaCantidadCambia() = runTest {
+    fun actualizarCantidad_registraUnMovimientoDeStockSiLaCantidadCambia() = runTest {
         val product = Product(id = "prod1", name = "Martillo", quantity = 10.0, profile = "PYME")
 
-        viewModel.updateQuantity(product, 15.0)
+        viewModel.actualizarCantidad(product, 15.0)
         advanceUntilIdle()
 
         // Verifica que se actualiza el producto
@@ -82,14 +96,28 @@ class ProductosViewModelTest {
         }
     }
 
+    /**
+     * Asegura que al dar de alta un producto se registre también su entrada inicial.
+     */
     @Test
-    fun insert_registraProductoYMovimientoInicial() = runTest {
-        val product = Product(id = "new", name = "Nuevo", quantity = 20.0, profile = "PYME")
+    fun insertar_registraProductoYMovimientoInicial() = runTest {
+        // Given
+        val product = Product(id = "new", name = "Nuevo", quantity = 20.0, profile = "PYME", unit = "uds")
 
-        viewModel.insert(product)
+        // When
+        viewModel.insertar(product)
         advanceUntilIdle()
 
-        coVerify { productRepository.insert(product) }
-        coVerify { stockRepository.insert(match { it.quantityChanged == 20.0 }) }
+        // Then
+        coVerify { 
+            productRepository.insert(match { 
+                it.name == "Nuevo" && it.quantity == 20.0 && it.customId.isNotEmpty() 
+            }) 
+        }
+        coVerify { 
+            stockRepository.insert(match { 
+                it.productName == "Nuevo" && it.quantityChanged == 20.0 
+            }) 
+        }
     }
 }

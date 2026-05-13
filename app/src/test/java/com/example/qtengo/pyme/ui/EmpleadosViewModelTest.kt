@@ -25,6 +25,9 @@ import org.junit.Test
 
 /**
  * Tests unitarios para [EmpleadosViewModel].
+ * 
+ * Verifica la gestión de la plantilla, reactividad ante cambios de perfil y
+ * cálculos financieros derivados (nóminas).
  */
 @ExperimentalCoroutinesApi
 class EmpleadosViewModelTest {
@@ -54,7 +57,7 @@ class EmpleadosViewModelTest {
      * la lista de empleados mostrada en la UI.
      */
     @Test
-    fun loadProfile_actualizaLaListaDeEmpleados() = runTest {
+    fun cargarPerfil_actualizaLaListaDeEmpleados() = runTest {
         // Given
         val listaMock = listOf(Employee(id = "1", name = "Test", profile = "PYME"))
         every { employeeRepository.getByProfileFlow("PYME") } returns flowOf(listaMock)
@@ -63,7 +66,7 @@ class EmpleadosViewModelTest {
         viewModel.employees.observeForever(observer)
 
         // When
-        viewModel.loadProfile("PYME")
+        viewModel.cargarPerfil("PYME")
         advanceUntilIdle()
 
         // Then
@@ -77,13 +80,13 @@ class EmpleadosViewModelTest {
      * Verifica que al insertar un empleado se guarde correctamente en el repositorio.
      */
     @Test
-    fun insert_registraEmpleadoCorrectamente() = runTest {
+    fun insertar_registraEmpleadoCorrectamente() = runTest {
         // Given
         val nombre = "Carlos"
         val salario = 1500.0
 
         // When
-        viewModel.insert(nombre, "Gerente", salario, "123", "test@test.com", "Notas")
+        viewModel.insertar(nombre, "Gerente", salario, "123", "test@test.com", "Notas")
         advanceUntilIdle()
 
         // Then: Verificar persistencia del empleado
@@ -94,9 +97,9 @@ class EmpleadosViewModelTest {
      * Asegura que la orden de eliminación se propague correctamente al repositorio.
      */
     @Test
-    fun delete_llamaAlRepositorioDeEmpleados() = runTest {
+    fun eliminar_llamaAlRepositorioDeEmpleados() = runTest {
         val id = "emp_123"
-        viewModel.delete(id)
+        viewModel.eliminar(id)
         advanceUntilIdle()
         coVerify { employeeRepository.delete(id) }
     }
@@ -105,10 +108,51 @@ class EmpleadosViewModelTest {
      * Asegura que la actualización de datos del empleado se propague correctamente al repositorio.
      */
     @Test
-    fun update_llamaAlRepositorioDeEmpleados() = runTest {
+    fun actualizar_llamaAlRepositorioDeEmpleados() = runTest {
         val emp = Employee(id = "1", name = "Editado")
-        viewModel.update(emp)
+        viewModel.actualizar(emp)
         advanceUntilIdle()
         coVerify { employeeRepository.update(emp) }
+    }
+    /**
+     * Valida que el cálculo del sumatorio de salarios sea correcto para reflejar
+     * el gasto total en personal en los informes financieros.
+     */
+    @Test
+    fun `totalSalarios calcula la suma correcta de todos los empleados`() = runTest {
+        // Given
+        val empleados = listOf(
+            Employee(salary = 1000.0),
+            Employee(salary = 500.0)
+        )
+        every { employeeRepository.getByProfileFlow("PYME") } returns flowOf(empleados)
+
+        // Activamos la observación para que el switchMap recolecte el flow
+        viewModel.employees.observeForever {}
+
+        // When
+        viewModel.cargarPerfil("PYME")
+        advanceUntilIdle()
+
+        // Then
+        val total = viewModel.employees.value?.sumOf { it.salary } ?: 0.0
+        Assert.assertEquals(1500.0, total, 0.1)
+    }
+
+    /**
+     * Verifica que el empleado herede automáticamente el perfil (PYME, etc.)
+     * que esté seleccionado actualmente en el ViewModel al ser insertado.
+     */
+    @Test
+    fun `insertar asigna el perfil correcto del ViewModel al nuevo empleado`() = runTest {
+        viewModel.cargarPerfil("ESPECIAL")
+        advanceUntilIdle()
+
+        viewModel.insertar("Ana", "Dev", 2000.0, "1", "a@a.com", "")
+        advanceUntilIdle()
+
+        coVerify {
+            employeeRepository.insert(match { it.profile == "ESPECIAL" })
+        }
     }
 }

@@ -148,19 +148,20 @@ fun TareasPantalla(
             onSortChange = { s, a -> sortBy = s; isAscending = a }
         )
 
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            TarjetaEstadisticaPyme(
-                titulo = "Disponibles", 
-                valor = "${allTasks.count { !it.isCompleted }}", 
-                color = Color(0xFF1565C0), 
-                modifier = Modifier.weight(1f)
-            )
-            TarjetaEstadisticaPyme(
-                titulo = "Realizadas", 
-                valor = "${allTasks.count { it.isCompleted }}", 
-                color = Color(0xFF2E7D32), 
-                modifier = Modifier.weight(1f)
-            )
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                TarjetaEstadisticaPyme(
+                    titulo = "Disponibles",
+                    valor = "${allTasks.count { !it.isCompleted }}",
+                    color = Color(0xFF1565C0),
+                    modifier = Modifier.weight(1f)
+                )
+                TarjetaEstadisticaPyme(
+                    titulo = "Realizadas",
+                    valor = "${allTasks.count { it.isCompleted }}",
+                    color = Color(0xFF2E7D32),
+                    modifier = Modifier.weight(1f)
+                )
         }
 
         Spacer(Modifier.height(16.dp))
