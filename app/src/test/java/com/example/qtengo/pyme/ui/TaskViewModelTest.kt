@@ -65,6 +65,35 @@ class TaskViewModelTest {
     }
 
     /**
+     * Verifica que al iniciar el ViewModel, la fecha seleccionada por defecto sea la de hoy.
+     */
+    @Test
+    fun init_estableceLaFechaDeHoyComoPredeterminada() {
+        val today = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
+        Assert.assertEquals(today, viewModel.selectedDate.value)
+    }
+
+    /**
+     * Valida que el flujo de todas las tareas (independiente de la fecha) se cargue
+     * correctamente al iniciar el ViewModel.
+     */
+    @Test
+    fun allTasks_cargaCorrectamenteTodasLasTareasDelPerfil() = runTest {
+        val tareas = listOf(Task(id = "1", title = "T1"), Task(id = "2", title = "T2"))
+        every { taskRepository.getByProfileFlow("PYME") } returns flowOf(tareas)
+
+        // Reiniciar ViewModel para que recoja el nuevo mock
+        viewModel = TaskViewModel(taskRepository, financeRepository, stockRepository)
+        
+        val observer = mockk<Observer<List<Task>>>(relaxed = true)
+        viewModel.allTasks.observeForever(observer)
+        advanceUntilIdle()
+
+        verify { observer.onChanged(tareas) }
+        Assert.assertEquals(2, viewModel.allTasks.value?.size)
+    }
+
+    /**
      * Valida que al seleccionar una fecha en el calendario, el ViewModel
      * actualice su estado y dispare las consultas correspondientes a los repositorios.
      */

@@ -135,4 +135,14 @@ class FinanzasViewModelTest {
         viewModel.eliminar("mov_123")
         coVerify { financeRepository.delete("mov_123") }
     }
+
+    /**
+     * Valida la regla de protección: las nóminas autogeneradas no deben ser eliminadas
+     * para evitar inconsistencias con la gestión de empleados.
+     */
+    @Test
+    fun eliminar_NO_eliminaSiElIDEmpiezaPorNomina_() = runTest {
+        viewModel.eliminar("nomina_emp1")
+        coVerify(exactly = 0) { financeRepository.delete("nomina_emp1") }
+    }
 }
