@@ -62,7 +62,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         // Habilitamos el modo de borde a borde pero configuraremos los paddings de seguridad
         enableEdgeToEdge()
 
@@ -226,7 +226,11 @@ class MainActivity : ComponentActivity() {
                                 "" -> RestauracionHomeScreen(onMenuSelected = { currentScreen = it }, onLogout = { cerrarSesion() }, onChangeProfile = { cambiarPerfil() })
                                 "Carta / Menú del día" -> CartaScreen(onBack = { currentScreen = "" }, onLogout = { cerrarSesion() }, onChangeProfile = { cambiarPerfil() })
                                 "Stock de cocina" -> StockCocinaScreen(onBack = { currentScreen = "" }, onLogout = { cerrarSesion() }, onChangeProfile = { cambiarPerfil() })
-                                "Reservas" -> ReservasScreen(onBack = { currentScreen = "" })
+                                "Reservas" -> ReservasScreen(
+                                    onBack = { currentScreen = "" },
+                                    onLogout = { cerrarSesion() },
+                                    onChangeProfile = { cambiarPerfil() }
+                                )
                                 "Proveedores" -> ProveedoresRestauracionScreen(onBack = { currentScreen = "" }, onLogout = { cerrarSesion() }, onChangeProfile = { cambiarPerfil() })
                                 else -> currentScreen = ""
                             }

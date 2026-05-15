@@ -1,5 +1,6 @@
 package com.example.qtengo.restauracion.ui.reservas
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,26 +14,22 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -42,19 +39,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.qtengo.core.ui.components.QtengoTopBar
 import com.example.qtengo.restauracion.ui.reservas.RestauracionReserva
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReservasScreen(
     onBack: () -> Unit,
+    onLogout: () -> Unit,
+    onChangeProfile: () -> Unit,
     viewModel: ReservasViewModel = viewModel()
 ) {
     val reservas by viewModel.reservasFiltradas.collectAsState()
@@ -67,6 +67,7 @@ fun ReservasScreen(
     LaunchedEffect(Unit) {
         viewModel.cargarReservas()
     }
+
     val error by viewModel.error.collectAsState()
     error?.let {
         AlertDialog(
@@ -81,82 +82,73 @@ fun ReservasScreen(
         )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Reservas") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Volver"
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Añadir"
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF4F7FB))
+    ) {
+        QtengoTopBar(
+            title = "Reservas",
+            onBack = onBack,
+            onLogout = onLogout,
+            onChangeProfile = onChangeProfile
+        )
+
+        OutlinedTextField(
+            value = filtro,
+            onValueChange = { viewModel.actualizarFiltro(it) },
+            label = { Text("Buscar reserva") },
+            placeholder = { Text("Cliente, notas o comensales") },
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        )
+
+        if (reservas.isEmpty()) {
+            Box(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (filtro.isBlank()) {
+                        "No hay reservas registradas."
+                    } else {
+                        "No se encontraron reservas."
+                    },
+                    color = Color.Gray
                 )
             }
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            OutlinedTextField(
-                value = filtro,
-                onValueChange = { viewModel.actualizarFiltro(it) },
-                label = { Text("Buscar reserva") },
-                placeholder = { Text("Cliente, notas o comensales") },
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            )
-
-            if (reservas.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = if (filtro.isBlank()) {
-                            "No hay reservas registradas."
-                        } else {
-                            "No se encontraron reservas."
-                        },
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+        } else {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(
+                    items = reservas,
+                    key = { it.id }
+                ) { reserva ->
+                    ReservaCard(
+                        reserva = reserva,
+                        onEditar = { reservaAEditar = reserva },
+                        onEliminar = { reservaAEliminar = reserva }
                     )
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(
-                        items = reservas,
-                        key = { it.id }
-                    ) { reserva ->
-                        ReservaCard(
-                            reserva = reserva,
-                            onEditar = { reservaAEditar = reserva },
-                            onEliminar = { reservaAEliminar = reserva }
-                        )
-                    }
-                }
             }
+        }
+
+        Button(
+            onClick = { showAddDialog = true },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A3A6B))
+        ) {
+            Icon(Icons.Default.Add, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Añadir reserva")
         }
 
         if (showAddDialog) {
@@ -204,7 +196,8 @@ fun ReservasScreen(
                         onClick = {
                             viewModel.eliminarReserva(reserva.id)
                             reservaAEliminar = null
-                        }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                     ) {
                         Text("Eliminar")
                     }
@@ -227,6 +220,8 @@ fun ReservaCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
@@ -238,22 +233,25 @@ fun ReservaCard(
                 text = reserva.nombreCliente,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+                color = Color(0xFF1A3A6B)
             )
 
             Spacer(modifier = Modifier.height(6.dp))
 
             Text(
                 text = "Fecha: ${formatearFecha(reserva.fecha)}",
-                style = MaterialTheme.typography.bodyMedium
+                fontSize = 13.sp,
+                color = Color.Gray
             )
             Text(
                 text = "Comensales: ${reserva.comensales}",
-                style = MaterialTheme.typography.bodyMedium
+                fontSize = 13.sp,
+                color = Color.Gray
             )
             Text(
                 text = "Notas: ${reserva.notas.ifBlank { "-" }}",
-                style = MaterialTheme.typography.bodyMedium
+                fontSize = 13.sp,
+                color = Color.Gray
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -265,7 +263,8 @@ fun ReservaCard(
                 IconButton(onClick = onEditar) {
                     Icon(
                         imageVector = Icons.Default.Edit,
-                        contentDescription = "Editar"
+                        contentDescription = "Editar",
+                        tint = Color(0xFF1A3A6B)
                     )
                 }
 
@@ -274,7 +273,8 @@ fun ReservaCard(
                 IconButton(onClick = onEliminar) {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = "Eliminar"
+                        contentDescription = "Eliminar",
+                        tint = Color.LightGray
                     )
                 }
             }
@@ -282,7 +282,6 @@ fun ReservaCard(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReservaDialog(
     titulo: String,
@@ -302,20 +301,29 @@ fun ReservaDialog(
         mutableStateOf(reservaInicial?.notas ?: "")
     }
 
+    var errorNombre by remember { mutableStateOf("") }
+    var errorComensales by remember { mutableStateOf("") }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(titulo) },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 OutlinedTextField(
                     value = nombre,
-                    onValueChange = { nombre = it },
-                    label = { Text("Nombre del cliente") },
+                    onValueChange = { nombre = it; errorNombre = "" },
+                    label = { Text("Nombre del cliente *") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = errorNombre.isNotEmpty(),
+                    supportingText = {
+                        if (errorNombre.isNotEmpty()) {
+                            Text(errorNombre, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
                 )
 
                 OutlinedTextField(
@@ -323,17 +331,24 @@ fun ReservaDialog(
                     onValueChange = { valor ->
                         if (valor.all { it.isDigit() }) {
                             comensalesTexto = valor
+                            errorComensales = ""
                         }
                     },
-                    label = { Text("Comensales") },
+                    label = { Text("Comensales *") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = errorComensales.isNotEmpty(),
+                    supportingText = {
+                        if (errorComensales.isNotEmpty()) {
+                            Text(errorComensales, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
                 )
 
                 OutlinedTextField(
                     value = notas,
                     onValueChange = { notas = it },
-                    label = { Text("Notas") },
+                    label = { Text("Notas (opcional)") },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -341,9 +356,19 @@ fun ReservaDialog(
         confirmButton = {
             Button(
                 onClick = {
+                    var hasError = false
                     val comensales = comensalesTexto.toIntOrNull() ?: 0
 
-                    if (nombre.trim().isNotBlank() && comensales > 0) {
+                    if (nombre.trim().isBlank()) {
+                        errorNombre = "El nombre es obligatorio"
+                        hasError = true
+                    }
+                    if (comensales <= 0) {
+                        errorComensales = "Introduce un número válido"
+                        hasError = true
+                    }
+
+                    if (!hasError) {
                         onGuardar(
                             nombre.trim(),
                             comensales,

@@ -30,7 +30,6 @@ data class RestauracionReserva(
 class ReservasViewModel : ViewModel() {
 
     private val db = FirebaseFirestore.getInstance()
-    private val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
     private val _reservas = MutableStateFlow<List<RestauracionReserva>>(emptyList())
     val reservas: StateFlow<List<RestauracionReserva>> = _reservas.asStateFlow()
@@ -38,11 +37,9 @@ class ReservasViewModel : ViewModel() {
     private val _filtro = MutableStateFlow("")
     val filtro: StateFlow<String> = _filtro.asStateFlow()
 
-    // ✅ Canal de errores estándar
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
-    // ✅ isLoading
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
@@ -50,18 +47,17 @@ class ReservasViewModel : ViewModel() {
 
     fun clearError() { _error.value = null }
 
-    // ✅ requireUid() centralizado
     private fun requireUid(): String? {
-        if (uid.isBlank()) {
+        val currentUid = FirebaseAuth.getInstance().currentUser?.uid
+        if (currentUid.isNullOrBlank()) {
             _error.value = "Usuario no autenticado. Por favor, inicia sesión de nuevo."
             return null
         }
-        return uid
+        return currentUid
     }
 
-    private fun reservasRef() = db.collection("usuarios").document(uid).collection("reservas")
+    private fun reservasRef(uid: String) = db.collection("usuarios").document(uid).collection("reservas")
 
-    // ✅ Filtro combinado — se mantiene la buena idea de Fran
     val reservasFiltradas: StateFlow<List<RestauracionReserva>> =
         combine(_reservas, _filtro) { lista, texto ->
             val filtroLimpio = texto.trim()
@@ -84,8 +80,6 @@ class ReservasViewModel : ViewModel() {
     fun actualizarFiltro(valor: String) {
         _filtro.value = valor
     }
-
-    // ─── Carga de datos ──────────────────────────────────────────────────────
 
     fun cargarReservas() {
         val uid = requireUid() ?: return
@@ -111,8 +105,6 @@ class ReservasViewModel : ViewModel() {
             }
     }
 
-    // ─── Escritura ───────────────────────────────────────────────────────────
-
     fun agregarReserva(
         nombre: String,
         comensales: Int,
@@ -121,7 +113,7 @@ class ReservasViewModel : ViewModel() {
         email: String = "",
         telefono: String = ""
     ) {
-        requireUid() ?: return
+        val uid = requireUid() ?: return
         viewModelScope.launch {
             _isLoading.value = true
             try {
@@ -134,7 +126,7 @@ class ReservasViewModel : ViewModel() {
                     "email" to email.trim(),
                     "telefono" to telefono.trim()
                 )
-                reservasRef().add(data).await()
+                reservasRef(uid).add(data).await()
             } catch (e: Exception) {
                 _error.value = "Error al agregar reserva: ${e.message}"
             } finally {
@@ -152,7 +144,7 @@ class ReservasViewModel : ViewModel() {
         email: String = "",
         telefono: String = ""
     ) {
-        requireUid() ?: return
+        val uid = requireUid() ?: return
         viewModelScope.launch {
             _isLoading.value = true
             try {
@@ -164,7 +156,7 @@ class ReservasViewModel : ViewModel() {
                     "email" to email.trim(),
                     "telefono" to telefono.trim()
                 )
-                reservasRef().document(id).update(data).await()
+                reservasRef(uid).document(id).update(data).await()
             } catch (e: Exception) {
                 _error.value = "Error al editar reserva: ${e.message}"
             } finally {
@@ -174,10 +166,10 @@ class ReservasViewModel : ViewModel() {
     }
 
     fun cambiarEstado(id: String, nuevoEstado: String) {
-        requireUid() ?: return
+        val uid = requireUid() ?: return
         viewModelScope.launch {
             try {
-                reservasRef().document(id).update("estado", nuevoEstado).await()
+                reservasRef(uid).document(id).update("estado", nuevoEstado).await()
             } catch (e: Exception) {
                 _error.value = "Error al cambiar estado: ${e.message}"
             }
@@ -185,11 +177,11 @@ class ReservasViewModel : ViewModel() {
     }
 
     fun eliminarReserva(id: String) {
-        requireUid() ?: return
+        val uid = requireUid() ?: return
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                reservasRef().document(id).delete().await()
+                reservasRef(uid).document(id).delete().await()
             } catch (e: Exception) {
                 _error.value = "Error al eliminar reserva: ${e.message}"
             } finally {
@@ -197,8 +189,6 @@ class ReservasViewModel : ViewModel() {
             }
         }
     }
-
-    // ─── Cleanup ─────────────────────────────────────────────────────────────
 
     override fun onCleared() {
         super.onCleared()

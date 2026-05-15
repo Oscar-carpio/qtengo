@@ -41,7 +41,6 @@ class ProveedoresRestauracionViewModel : ViewModel() {
 
     private var proveedoresListener: ListenerRegistration? = null
 
-    // ─── Filtro combinado ────────────────────────────────────────────────────
 
     val proveedoresFiltrados: StateFlow<List<Proveedor>> =
         combine(_proveedores, _filtro) { lista, texto ->
@@ -71,7 +70,6 @@ class ProveedoresRestauracionViewModel : ViewModel() {
         _error.value = null
     }
 
-    // ─── Helpers internos ────────────────────────────────────────────────────
 
     private fun requireUid(): String? {
         if (uid.isBlank()) {
@@ -84,7 +82,6 @@ class ProveedoresRestauracionViewModel : ViewModel() {
     private fun proveedoresRef() =
         db.collection("usuarios").document(uid).collection("proveedoresRestauracion")
 
-    // ─── Carga de datos ──────────────────────────────────────────────────────
 
     fun cargarProveedores() {
         val uid = requireUid() ?: return
@@ -110,7 +107,6 @@ class ProveedoresRestauracionViewModel : ViewModel() {
             }
     }
 
-    // ─── Escritura ───────────────────────────────────────────────────────────
 
     fun agregarProveedor(proveedor: Proveedor) {
         requireUid() ?: return
@@ -168,7 +164,6 @@ class ProveedoresRestauracionViewModel : ViewModel() {
         }
     }
 
-    // ─── Cleanup ─────────────────────────────────────────────────────────────
 
     override fun onCleared() {
         super.onCleared()

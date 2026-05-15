@@ -42,7 +42,6 @@ fun ProveedoresRestauracionScreen(
 
     LaunchedEffect(Unit) { viewModel.cargarProveedores() }
 
-    // ─── Diálogo de error ────────────────────────────────────────────────────
     error?.let {
         AlertDialog(
             onDismissRequest = { viewModel.clearError() },
@@ -54,7 +53,6 @@ fun ProveedoresRestauracionScreen(
         )
     }
 
-    // ─── Diálogo añadir ──────────────────────────────────────────────────────
     if (showAddDialog) {
         ProveedorDialog(
             proveedor = null,
@@ -63,7 +61,6 @@ fun ProveedoresRestauracionScreen(
         )
     }
 
-    // ─── Diálogo editar ──────────────────────────────────────────────────────
     proveedorAEditar?.let { proveedor ->
         ProveedorDialog(
             proveedor = proveedor,
@@ -72,7 +69,6 @@ fun ProveedoresRestauracionScreen(
         )
     }
 
-    // ─── Diálogo confirmar eliminación ───────────────────────────────────────
     proveedorAEliminar?.let { proveedor ->
         AlertDialog(
             onDismissRequest = { proveedorAEliminar = null },
@@ -90,7 +86,6 @@ fun ProveedoresRestauracionScreen(
         )
     }
 
-    // ─── Layout principal ────────────────────────────────────────────────────
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -163,7 +158,6 @@ fun ProveedoresRestauracionScreen(
     }
 }
 
-// ─── Card ────────────────────────────────────────────────────────────────────
 
 @Composable
 fun ProveedorCard(proveedor: Proveedor, onEdit: () -> Unit, onDelete: () -> Unit) {
@@ -251,7 +245,6 @@ fun ProveedorCard(proveedor: Proveedor, onEdit: () -> Unit, onDelete: () -> Unit
     }
 }
 
-// ─── Dialog ──────────────────────────────────────────────────────────────────
 
 @Composable
 fun ProveedorDialog(
