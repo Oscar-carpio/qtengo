@@ -1,6 +1,7 @@
 package com.example.qtengo.pyme.ui
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
+import androidx.lifecycle.Observer
 import com.example.qtengo.core.data.repositories.EmployeeRepository
 import com.example.qtengo.core.data.repositories.FinanceRepository
 import com.example.qtengo.core.domain.models.Employee
@@ -120,9 +121,9 @@ class FinanzasViewModelTest {
      * Comprueba que la inserción de un nuevo movimiento se delegue correctamente al repositorio.
      */
     @Test
-    fun insert_llamaAlRepositorioDeFinanzas() = runTest {
+    fun insertar_llamaAlRepositorioDeFinanzas() = runTest {
         val movement = FinanceMovement(concept = "Test", amount = 10.0, type = "INGRESO")
-        viewModel.insert(movement)
+        viewModel.insertar(movement)
         coVerify { financeRepository.insert(movement) }
     }
 
@@ -130,8 +131,18 @@ class FinanzasViewModelTest {
      * Asegura que los movimientos normales sí puedan ser eliminados.
      */
     @Test
-    fun delete_eliminaSiElIDNoEmpiezaPorNomina_() = runTest {
-        viewModel.delete("mov_123")
+    fun eliminar_eliminaSiElIDNoEmpiezaPorNomina_() = runTest {
+        viewModel.eliminar("mov_123")
         coVerify { financeRepository.delete("mov_123") }
+    }
+
+    /**
+     * Valida la regla de protección: las nóminas autogeneradas no deben ser eliminadas
+     * para evitar inconsistencias con la gestión de empleados.
+     */
+    @Test
+    fun eliminar_NO_eliminaSiElIDEmpiezaPorNomina_() = runTest {
+        viewModel.eliminar("nomina_emp1")
+        coVerify(exactly = 0) { financeRepository.delete("nomina_emp1") }
     }
 }

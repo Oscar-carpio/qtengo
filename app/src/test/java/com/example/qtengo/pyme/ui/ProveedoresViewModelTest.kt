@@ -23,6 +23,11 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
+/**
+ * Tests unitarios para [ProveedoresViewModel].
+ * 
+ * Valida la gestión del catálogo de proveedores y el filtrado por perfil.
+ */
 @ExperimentalCoroutinesApi
 class ProveedoresViewModelTest {
 
@@ -45,27 +50,33 @@ class ProveedoresViewModelTest {
         Dispatchers.resetMain()
     }
 
+    /**
+     * Verifica que al cambiar el perfil se carguen solo los proveedores asociados.
+     */
     @Test
-    fun loadProfile_cargaLosProveedoresDelPerfilIndicado() = runTest {
+    fun cargarPerfil_cargaLosProveedoresDelPerfilIndicado() = runTest {
         val proveedoresMock = listOf(Supplier(id = "1", name = "Proveedor A", profile = "PYME"))
         every { repository.getByProfileFlow("PYME") } returns flowOf(proveedoresMock)
 
         val observer = mockk<Observer<List<Supplier>>>(relaxed = true)
         viewModel.suppliers.observeForever(observer)
 
-        viewModel.loadProfile("PYME")
+        viewModel.cargarPerfil("PYME")
         advanceUntilIdle()
 
         verify { observer.onChanged(proveedoresMock) }
         Assert.assertEquals(proveedoresMock, viewModel.suppliers.value)
     }
 
+    /**
+     * Valida que la inserción de un proveedor asocie correctamente el perfil activo.
+     */
     @Test
-    fun insert_llamaAlRepositorioConLosDatosCorrectos() = runTest {
-        viewModel.loadProfile("PYME")
+    fun insertar_llamaAlRepositorioConLosDatosCorrectos() = runTest {
+        viewModel.cargarPerfil("PYME")
         advanceUntilIdle()
 
-        viewModel.insert("Empresa X", "Juan", "600000000", "test@test.com", "Alimentación")
+        viewModel.insertar("Empresa X", "Juan", "600000000", "test@test.com", "Alimentación")
         advanceUntilIdle()
 
         coVerify {
@@ -77,18 +88,21 @@ class ProveedoresViewModelTest {
         }
     }
 
+    /**
+     * Asegura que las actualizaciones y eliminaciones se propaguen al repositorio.
+     */
     @Test
-    fun update_llamaAlRepositorio() = runTest {
+    fun actualizar_llamaAlRepositorio() = runTest {
         val supplier = Supplier(id = "123", name = "Update Test")
-        viewModel.update(supplier)
+        viewModel.actualizar(supplier)
         advanceUntilIdle()
         coVerify { repository.update(supplier) }
     }
 
     @Test
-    fun delete_llamaAlRepositorio() = runTest {
+    fun eliminar_llamaAlRepositorio() = runTest {
         val id = "id_delete"
-        viewModel.delete(id)
+        viewModel.eliminar(id)
         advanceUntilIdle()
         coVerify { repository.delete(id) }
     }
