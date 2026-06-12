@@ -31,7 +31,7 @@ data class MenuDia(
 class CartaViewModel : ViewModel() {
 
     private val db = FirebaseFirestore.getInstance()
-    private val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    private val auth = FirebaseAuth.getInstance()
 
     private val _platos = MutableStateFlow<List<Plato>>(emptyList())
     val platos: StateFlow<List<Plato>> = _platos
@@ -45,121 +45,224 @@ class CartaViewModel : ViewModel() {
     private var platosListener: ListenerRegistration? = null
     private var menuListener: ListenerRegistration? = null
 
-    fun clearError() { _error.value = null }
-
-    private fun requireUid(): String? {
-        if (uid.isBlank()) { _error.value = "Usuario no autenticado"; return null }
-        return uid
+    fun clearError() {
+        _error.value = null
     }
 
-    private fun platosRef() = db.collection("usuarios").document(uid).collection("restauracion_platos")
-    private fun menuRef() = db.collection("usuarios").document(uid).collection("restauracion_menu")
+    private fun obtenerUid(): String? {
+        val usuario = auth.currentUser
+
+        if (usuario == null) {
+            _error.value = "Usuario no autenticado"
+            return null
+        }
+
+        return usuario.uid
+    }
+
+    private fun referenciaPlatos(uid: String) =
+        db.collection("usuarios")
+            .document(uid)
+            .collection("restauracion_platos")
+
+    private fun referenciaMenu(uid: String) =
+        db.collection("usuarios")
+            .document(uid)
+            .collection("restauracion_menu")
 
     fun cargarPlatos() {
-        val uid = requireUid() ?: return
+        val uid = obtenerUid() ?: return
+
         platosListener?.remove()
-        platosListener = db.collection("usuarios").document(uid).collection("restauracion_platos")
-            .addSnapshotListener { snapshot, e ->
-                if (e != null) { _error.value = "Error al cargar carta: ${e.message}"; return@addSnapshotListener }
-                _platos.value = snapshot?.documents?.map { doc ->
-                    Plato(
-                        id = doc.id,
-                        nombre = doc.getString("nombre") ?: "",
-                        descripcion = doc.getString("descripcion") ?: "",
-                        precio = doc.getDouble("precio") ?: 0.0,
-                        categoria = doc.getString("categoria") ?: "Principales",
-                        disponible = doc.getBoolean("disponible") ?: true
+
+        platosListener = referenciaPlatos(uid)
+            .addSnapshotListener { snapshot, error ->
+
+                if (error != null) {
+                    _error.value = "Error al cargar carta: ${error.message}"
+                    return@addSnapshotListener
+                }
+
+                if (snapshot == null) {
+                    _platos.value = emptyList()
+                    return@addSnapshotListener
+                }
+
+                val lista = mutableListOf<Plato>()
+
+                for (documento in snapshot.documents) {
+                    val plato = Plato(
+                        id = documento.id,
+                        nombre = documento.getString("nombre") ?: "",
+                        descripcion = documento.getString("descripcion") ?: "",
+                        precio = documento.getDouble("precio") ?: 0.0,
+                        categoria = documento.getString("categoria") ?: "Principales",
+                        disponible = documento.getBoolean("disponible") ?: true
                     )
-                } ?: emptyList()
+
+                    lista.add(plato)
+                }
+
+                _platos.value = lista
             }
     }
 
     fun cargarMenuDia() {
-        val uid = requireUid() ?: return
+        val uid = obtenerUid() ?: return
+
         menuListener?.remove()
-        menuListener = db.collection("usuarios").document(uid).collection("restauracion_menu")
+
+        menuListener = referenciaMenu(uid)
             .document("hoy")
-            .addSnapshotListener { snapshot, e ->
-                if (e != null) { _error.value = "Error al cargar menú: ${e.message}"; return@addSnapshotListener }
-                _menuDia.value = snapshot?.let { doc ->
-                    if (!doc.exists()) return@let null
-                    MenuDia(
-                        id = doc.id,
-                        primerPlato = doc.getString("primerPlato") ?: "",
-                        segundoPlato = doc.getString("segundoPlato") ?: "",
-                        postre = doc.getString("postre") ?: "",
-                        precio = doc.getDouble("precio") ?: 0.0,
-                        fecha = doc.getString("fecha") ?: ""
-                    )
+            .addSnapshotListener { snapshot, error ->
+
+                if (error != null) {
+                    _error.value = "Error al cargar menú: ${error.message}"
+                    return@addSnapshotListener
                 }
+
+                if (snapshot == null || !snapshot.exists()) {
+                    _menuDia.value = null
+                    return@addSnapshotListener
+                }
+
+                val menu = MenuDia(
+                    id = snapshot.id,
+                    primerPlato = snapshot.getString("primerPlato") ?: "",
+                    segundoPlato = snapshot.getString("segundoPlato") ?: "",
+                    postre = snapshot.getString("postre") ?: "",
+                    precio = snapshot.getDouble("precio") ?: 0.0,
+                    fecha = snapshot.getString("fecha") ?: ""
+                )
+
+                _menuDia.value = menu
             }
     }
 
     fun añadirPlato(plato: Plato) {
-        requireUid() ?: return
+        val uid = obtenerUid() ?: return
+
         viewModelScope.launch {
             try {
-                val data = mapOf(
+                val datos = hashMapOf(
                     "nombre" to plato.nombre,
                     "descripcion" to plato.descripcion,
                     "precio" to plato.precio,
                     "categoria" to plato.categoria,
                     "disponible" to plato.disponible
                 )
-                platosRef().add(data).await()
-            } catch (e: Exception) { _error.value = "Error al añadir plato: ${e.message}" }
+
+                referenciaPlatos(uid)
+                    .add(datos)
+                    .await()
+
+            } catch (e: Exception) {
+                _error.value = "Error al añadir plato: ${e.message}"
+            }
         }
     }
 
-    /** Edita un plato existente de la carta */
-    fun editarPlato(platoId: String, plato: Plato) {
-        requireUid() ?: return
+    fun editarPlato(
+        platoId: String,
+        plato: Plato
+    ) {
+        val uid = obtenerUid() ?: return
+
+        if (platoId.isBlank()) {
+            _error.value = "No se puede editar el plato porque no tiene ID"
+            return
+        }
+
         viewModelScope.launch {
             try {
-                platosRef().document(platoId).update(
-                    "nombre", plato.nombre,
-                    "descripcion", plato.descripcion,
-                    "precio", plato.precio,
-                    "categoria", plato.categoria
-                ).await()
-            } catch (e: Exception) { _error.value = "Error al editar plato: ${e.message}" }
+                referenciaPlatos(uid)
+                    .document(platoId)
+                    .update(
+                        "nombre", plato.nombre,
+                        "descripcion", plato.descripcion,
+                        "precio", plato.precio,
+                        "categoria", plato.categoria
+                    )
+                    .await()
+
+            } catch (e: Exception) {
+                _error.value = "Error al editar plato: ${e.message}"
+            }
         }
     }
 
-    fun toggleDisponible(platoId: String, disponible: Boolean) {
-        requireUid() ?: return
+    fun toggleDisponible(
+        platoId: String,
+        disponible: Boolean
+    ) {
+        val uid = obtenerUid() ?: return
+
+        if (platoId.isBlank()) {
+            _error.value = "No se puede actualizar el plato porque no tiene ID"
+            return
+        }
+
         viewModelScope.launch {
-            try { platosRef().document(platoId).update("disponible", disponible).await() }
-            catch (e: Exception) { _error.value = "Error al actualizar plato: ${e.message}" }
+            try {
+                referenciaPlatos(uid)
+                    .document(platoId)
+                    .update("disponible", disponible)
+                    .await()
+
+            } catch (e: Exception) {
+                _error.value = "Error al actualizar plato: ${e.message}"
+            }
         }
     }
 
     fun eliminarPlato(platoId: String) {
-        requireUid() ?: return
+        val uid = obtenerUid() ?: return
+
+        if (platoId.isBlank()) {
+            _error.value = "No se puede eliminar el plato porque no tiene ID"
+            return
+        }
+
         viewModelScope.launch {
-            try { platosRef().document(platoId).delete().await() }
-            catch (e: Exception) { _error.value = "Error al eliminar plato: ${e.message}" }
+            try {
+                referenciaPlatos(uid)
+                    .document(platoId)
+                    .delete()
+                    .await()
+
+            } catch (e: Exception) {
+                _error.value = "Error al eliminar plato: ${e.message}"
+            }
         }
     }
 
     fun guardarMenuDia(menu: MenuDia) {
-        requireUid() ?: return
+        val uid = obtenerUid() ?: return
+
         viewModelScope.launch {
             try {
-                val data = mapOf(
+                val datos = hashMapOf(
                     "primerPlato" to menu.primerPlato,
                     "segundoPlato" to menu.segundoPlato,
                     "postre" to menu.postre,
                     "precio" to menu.precio,
                     "fecha" to menu.fecha
                 )
-                menuRef().document("hoy").set(data).await()
-            } catch (e: Exception) { _error.value = "Error al guardar menú: ${e.message}" }
+
+                referenciaMenu(uid)
+                    .document("hoy")
+                    .set(datos)
+                    .await()
+
+            } catch (e: Exception) {
+                _error.value = "Error al guardar menú: ${e.message}"
+            }
         }
     }
 
     override fun onCleared() {
         super.onCleared()
+
         platosListener?.remove()
         menuListener?.remove()
     }
